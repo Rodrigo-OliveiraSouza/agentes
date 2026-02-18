@@ -1,0 +1,2 @@
+/api/* https://ibge-map-api.rodrigoliveria0001.workers.dev/api/:splat 200
+/health https://ibge-map-api.rodrigoliveria0001.workers.dev/health 200

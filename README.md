@@ -138,6 +138,7 @@ Use `.env.example` como base.
 - `VITE_API_BASE_URL` (ex.: `http://127.0.0.1:8787` no dev)
 - `VITE_GOOGLE_MAPS_API_KEY`
 - Arquivo local sugerido: `apps/web/.env.local`
+- Em producao, nao use `127.0.0.1` ou `localhost` no Pages.
 
 ### API (`apps/api` / Worker)
 
@@ -198,6 +199,7 @@ wrangler deploy
 - Build command: `npm run build -w @ibge-map/web`
 - Build output: `apps/web/dist`
 - Configure env `VITE_API_BASE_URL` para URL pública do Worker.
+- O arquivo `apps/web/public/_redirects` ja encaminha `/api/*` e `/health` para a Worker publica.
 
 ### 4) Banco no Neon
 
@@ -238,4 +240,5 @@ npm run prisma:migrate
 3. Pré-processamento de malhas em TopoJSON + simplificação adicional por zoom.
 4. Snapshot scheduler (Cron Worker) para atualizar datasets a cada X dias.
 5. Camadas avançadas (tile vector, WebGL, diffs temporais animados).
+
 

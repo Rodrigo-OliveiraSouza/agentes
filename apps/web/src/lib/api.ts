@@ -7,7 +7,42 @@ import type {
   TerritoryLevel,
 } from './types';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+const DEFAULT_PUBLIC_API_BASE = 'https://ibge-map-api.rodrigoliveria0001.workers.dev';
+const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').trim();
+
+const isLoopbackHost = (host: string): boolean => {
+  return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1' || host === '[::1]';
+};
+
+const isLoopbackUrl = (url: string): boolean => {
+  try {
+    return isLoopbackHost(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+};
+
+const isLocalBrowser = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return isLoopbackHost(window.location.hostname);
+};
+
+const resolveApiBase = (): string => {
+  if (RAW_API_BASE) {
+    if (isLoopbackUrl(RAW_API_BASE) && !isLocalBrowser()) {
+      return DEFAULT_PUBLIC_API_BASE;
+    }
+    return RAW_API_BASE.replace(/\/+$/, '');
+  }
+
+  if (import.meta.env.PROD && !isLocalBrowser()) {
+    return DEFAULT_PUBLIC_API_BASE;
+  }
+
+  return '';
+};
+
+const API_BASE = resolveApiBase();
 const CACHE_PREFIX = 'ibge-map-cache-v6';
 
 type RequestParams = Record<string, string | number | boolean | undefined>;

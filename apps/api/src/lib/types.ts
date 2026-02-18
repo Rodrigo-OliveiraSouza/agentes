@@ -43,3 +43,24 @@ export type IndicatorPoint = {
   value: number;
 };
 
+export type ProfileMetricStatus = 'ok' | 'partial' | 'unavailable';
+
+export type CityProfileMetric = {
+  key: string;
+  label: string;
+  category: 'demografia' | 'economia' | 'educacao' | 'saude' | 'seguranca';
+  source: string;
+  unit: string;
+  year: number | null;
+  value: number | null;
+  status: ProfileMetricStatus;
+  notes?: string;
+};
+
+export type CityProfilePayload = {
+  cityCode: string;
+  cityName: string;
+  ufCode: string;
+  metrics: CityProfileMetric[];
+};
+

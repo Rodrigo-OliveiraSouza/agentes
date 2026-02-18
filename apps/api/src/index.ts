@@ -5,6 +5,7 @@ import { territoriesRoute } from './routes/territories';
 import { indicatorsRoute } from './routes/indicators';
 import { dataRoute } from './routes/data';
 import { geojsonRoute } from './routes/geojson';
+import { cityProfileRoute } from './routes/city-profile';
 import { toErrorResponse } from './lib/errors';
 import { rateLimitMiddleware } from './lib/rate-limit';
 import type { AppBindings } from './lib/types';
@@ -27,7 +28,7 @@ app.get('/', (c) => {
     ok: true,
     service: 'ibge-map-api',
     message: 'API online. Use /health ou /api/*',
-    routes: ['/health', '/api/territories', '/api/indicators', '/api/data', '/api/geojson'],
+    routes: ['/health', '/api/territories', '/api/indicators', '/api/data', '/api/geojson', '/api/city-profile'],
   });
 });
 
@@ -43,6 +44,7 @@ app.route('/api/territories', territoriesRoute);
 app.route('/api/indicators', indicatorsRoute);
 app.route('/api/data', dataRoute);
 app.route('/api/geojson', geojsonRoute);
+app.route('/api/city-profile', cityProfileRoute);
 
 app.notFound((c) => {
   return c.json(

@@ -1,8 +1,27 @@
-import type { DataResponse, GeoJsonResponse, IndicatorDefinition, Territory, TerritoryLevel } from './types';
+import type {
+  CityProfileResponse,
+  DataResponse,
+  GeoJsonResponse,
+  IndicatorDefinition,
+  Territory,
+  TerritoryLevel,
+} from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+const CACHE_PREFIX = 'ibge-map-cache-v2';
 
-const buildUrl = (path: string, params?: Record<string, string | number | boolean | undefined>): string => {
+type RequestParams = Record<string, string | number | boolean | undefined>;
+
+type RequestOptions = {
+  cacheTtlSeconds?: number;
+};
+
+type CachedEntry<T> = {
+  expiresAt: number;
+  payload: T;
+};
+
+const buildUrl = (path: string, params?: RequestParams): string => {
   const base = `${API_BASE}${path}`;
   if (!params) return base;
 
@@ -16,25 +35,87 @@ const buildUrl = (path: string, params?: Record<string, string | number | boolea
   return serialized ? `${base}?${serialized}` : base;
 };
 
-const request = async <T>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> => {
-  const response = await fetch(buildUrl(path, params));
+const buildCacheKey = (url: string): string => `${CACHE_PREFIX}:${url}`;
 
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({ error: { message: 'Erro desconhecido' } }));
-    throw new Error(payload?.error?.message ?? 'Erro na API');
+const readCache = <T>(key: string): CachedEntry<T> | null => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedEntry<T>;
+    if (!parsed.expiresAt || Date.now() > parsed.expiresAt) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeCache = <T>(key: string, payload: T, ttlSeconds: number): void => {
+  try {
+    const entry: CachedEntry<T> = {
+      expiresAt: Date.now() + ttlSeconds * 1000,
+      payload,
+    };
+    const serialized = JSON.stringify(entry);
+    if (serialized.length > 4_500_000) return;
+    localStorage.setItem(key, serialized);
+  } catch {
+    // Ignore storage quota or serialization failures.
+  }
+};
+
+const request = async <T>(path: string, params?: RequestParams, options?: RequestOptions): Promise<T> => {
+  const url = buildUrl(path, params);
+  const cacheKey = buildCacheKey(url);
+  const ttlSeconds = options?.cacheTtlSeconds ?? 0;
+
+  if (ttlSeconds > 0) {
+    const cached = readCache<T>(cacheKey);
+    if (cached) {
+      return cached.payload;
+    }
   }
 
-  return (await response.json()) as T;
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({ error: { message: 'Erro desconhecido' } }));
+      throw new Error(payload?.error?.message ?? 'Erro na API');
+    }
+
+    const payload = (await response.json()) as T;
+
+    if (ttlSeconds > 0) {
+      writeCache(cacheKey, payload, ttlSeconds);
+    }
+
+    return payload;
+  } catch (error) {
+    const fallback = readCache<T>(cacheKey);
+    if (fallback) {
+      return fallback.payload;
+    }
+    throw error;
+  }
 };
 
 export const api = {
   indicators: async (): Promise<IndicatorDefinition[]> => {
-    const payload = await request<{ items: IndicatorDefinition[] }>('/api/indicators');
+    const payload = await request<{ items: IndicatorDefinition[] }>('/api/indicators', undefined, {
+      cacheTtlSeconds: 86_400,
+    });
     return payload.items;
   },
 
   territories: async (level: TerritoryLevel, parentCode?: string, search?: string): Promise<Territory[]> => {
-    const payload = await request<{ items: Territory[] }>('/api/territories', { level, parentCode, search });
+    const payload = await request<{ items: Territory[] }>(
+      '/api/territories',
+      { level, parentCode, search },
+      { cacheTtlSeconds: 86_400 },
+    );
     return payload.items;
   },
 
@@ -46,7 +127,7 @@ export const api = {
     search?: string;
     limit?: number;
   }): Promise<DataResponse> => {
-    return request<DataResponse>('/api/data', params);
+    return request<DataResponse>('/api/data', params, { cacheTtlSeconds: 3_600 });
   },
 
   geojson: async (params: {
@@ -54,7 +135,10 @@ export const api = {
     code?: string;
     simplified?: boolean;
   }): Promise<GeoJsonResponse> => {
-    return request<GeoJsonResponse>('/api/geojson', params);
+    return request<GeoJsonResponse>('/api/geojson', params, { cacheTtlSeconds: 86_400 });
+  },
+
+  cityProfile: async (cityCode: string): Promise<CityProfileResponse> => {
+    return request<CityProfileResponse>('/api/city-profile', { cityCode }, { cacheTtlSeconds: 86_400 });
   },
 };
-

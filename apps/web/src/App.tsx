@@ -274,6 +274,13 @@ const App = () => {
     return sortedPoints.find((point) => point.code === selectedCode) ?? null;
   }, [selectedCode, sortedPoints]);
 
+  const selectedCityCode = useMemo(() => {
+    if (level !== 'MUNICIPIO') return null;
+    if (selectedCode && /^\d{7}$/.test(selectedCode)) return selectedCode;
+    if (municipalityCode && /^\d{7}$/.test(municipalityCode)) return municipalityCode;
+    return null;
+  }, [level, selectedCode, municipalityCode]);
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -420,10 +427,10 @@ const App = () => {
 
         <SidePanel
           selected={selectedPoint}
-          sortedPoints={sortedPoints}
           indicatorLabel={indicatorLabelFrom(indicator, indicators)}
           unit={indicatorUnitFrom(indicator, indicators)}
           levelLabel={levelLabel[level]}
+          selectedCityCode={selectedCityCode}
         />
       </main>
     </div>

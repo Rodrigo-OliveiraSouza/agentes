@@ -1,5 +1,13 @@
 import { ApiError } from './errors';
-import type { IndicatorDefinition, IndicatorPoint, IndicatorSlug, TerritoryItem, TerritoryLevel } from './types';
+import type {
+  CityProfileMetric,
+  CityProfilePayload,
+  IndicatorDefinition,
+  IndicatorPoint,
+  IndicatorSlug,
+  TerritoryItem,
+  TerritoryLevel,
+} from './types';
 
 const LOCALIDADES_BASE = 'https://servicodados.ibge.gov.br/api/v1/localidades';
 const AGREGADOS_BASE = 'https://servicodados.ibge.gov.br/api/v3/agregados';
@@ -15,6 +23,19 @@ const GDP_VARIABLE = '37';
 const TERRITORY_AGGREGATE = '1301';
 const TERRITORY_AREA_VARIABLE = '615';
 const DEMOGRAPHIC_DENSITY_VARIABLE = '616';
+
+const LITERACY_AGGREGATE = '1699';
+const LITERACY_RATE_VARIABLE = '1646';
+const LITERACY_CLASSIFICATIONS = 'classificacao=2[6794]';
+
+const SANITATION_AGGREGATE = '3154';
+const SANITATION_SEWER_RATE_VARIABLE = '1000096';
+const SANITATION_CLASSIFICATIONS = 'classificacao=299[10941]';
+
+const CRIME_PROXY_AGGREGATE = '899';
+const HOMICIDE_RATE_VARIABLE = '2150';
+const TRAFFIC_RATE_VARIABLE = '2151';
+const CRIME_CLASSIFICATIONS = 'classificacao=2[6794]';
 
 export const INDICATORS: IndicatorDefinition[] = [
   {
@@ -191,10 +212,24 @@ type FetchAggregateParams = {
 };
 
 const toNumericValue = (raw: string): number => {
-  const normalized = String(raw ?? '')
-    .replace(/\./g, '')
-    .replace(',', '.')
-    .replace(/[^0-9.-]/g, '');
+  const text = String(raw ?? '').trim();
+  if (!text) return Number.NaN;
+
+  let normalized = text;
+
+  if (text.includes(',') && text.includes('.')) {
+    if (text.lastIndexOf(',') > text.lastIndexOf('.')) {
+      normalized = text.replace(/\./g, '').replace(',', '.');
+    } else {
+      normalized = text.replace(/,/g, '');
+    }
+  } else if (text.includes(',')) {
+    normalized = text.replace(/\./g, '').replace(',', '.');
+  } else {
+    normalized = text.replace(/,/g, '');
+  }
+
+  normalized = normalized.replace(/[^0-9.-]/g, '');
   return Number(normalized);
 };
 
@@ -293,6 +328,190 @@ export const fetchIndicatorData = async (
         { indicator },
       );
   }
+};
+
+const buildMetric = (
+  metric: Omit<CityProfileMetric, 'status'> & { value: number | null; status?: CityProfileMetric['status'] },
+): CityProfileMetric => {
+  return {
+    ...metric,
+    status: metric.status ?? (metric.value === null ? 'unavailable' : 'ok'),
+  };
+};
+
+const safeFirstPoint = async (producer: () => Promise<IndicatorPoint[]>): Promise<IndicatorPoint | null> => {
+  try {
+    const rows = await producer();
+    return rows[0] ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export const fetchCityProfile = async (cityCode: string): Promise<CityProfilePayload> => {
+  if (!/^\d{7}$/.test(cityCode)) {
+    throw new ApiError(400, 'INVALID_CITY_CODE', 'cityCode deve ser um codigo IBGE de municipio (7 digitos).');
+  }
+
+  const ufCode = cityCode.slice(0, 2);
+
+  const [population, gdp, density, area, literacyRate, sewerCoverage, ufHomicideRate, ufTrafficRate] =
+    await Promise.all([
+      safeFirstPoint(() => fetchIndicatorData('population', 'MUNICIPIO', 2022, cityCode)),
+      safeFirstPoint(() => fetchIndicatorData('gdp', 'MUNICIPIO', 2023, cityCode)),
+      safeFirstPoint(() => fetchIndicatorData('demographic_density', 'MUNICIPIO', 2010, cityCode)),
+      safeFirstPoint(() => fetchIndicatorData('territory_area', 'MUNICIPIO', 2010, cityCode)),
+      safeFirstPoint(() =>
+        fetchAggregateSeries({
+          level: 'MUNICIPIO',
+          year: 2010,
+          code: cityCode,
+          aggregateId: LITERACY_AGGREGATE,
+          variableId: LITERACY_RATE_VARIABLE,
+          classificationQuery: LITERACY_CLASSIFICATIONS,
+        }),
+      ),
+      safeFirstPoint(() =>
+        fetchAggregateSeries({
+          level: 'MUNICIPIO',
+          year: 2010,
+          code: cityCode,
+          aggregateId: SANITATION_AGGREGATE,
+          variableId: SANITATION_SEWER_RATE_VARIABLE,
+          classificationQuery: SANITATION_CLASSIFICATIONS,
+        }),
+      ),
+      safeFirstPoint(() =>
+        fetchAggregateSeries({
+          level: 'UF',
+          year: 2012,
+          code: ufCode,
+          aggregateId: CRIME_PROXY_AGGREGATE,
+          variableId: HOMICIDE_RATE_VARIABLE,
+          classificationQuery: CRIME_CLASSIFICATIONS,
+        }),
+      ),
+      safeFirstPoint(() =>
+        fetchAggregateSeries({
+          level: 'UF',
+          year: 2012,
+          code: ufCode,
+          aggregateId: CRIME_PROXY_AGGREGATE,
+          variableId: TRAFFIC_RATE_VARIABLE,
+          classificationQuery: CRIME_CLASSIFICATIONS,
+        }),
+      ),
+    ]);
+
+  const cityName = population?.name ?? gdp?.name ?? density?.name ?? `Municipio ${cityCode}`;
+  const gdpPerCapita =
+    population && gdp && population.value > 0 ? (gdp.value * 1000) / population.value : null;
+
+  const metrics: CityProfileMetric[] = [
+    buildMetric({
+      key: 'population',
+      label: 'Populacao residente',
+      category: 'demografia',
+      source: 'IBGE 10211/93',
+      unit: 'pessoas',
+      year: 2022,
+      value: population?.value ?? null,
+    }),
+    buildMetric({
+      key: 'gdp',
+      label: 'PIB a precos correntes',
+      category: 'economia',
+      source: 'IBGE 5938/37',
+      unit: 'mil reais',
+      year: 2023,
+      value: gdp?.value ?? null,
+    }),
+    buildMetric({
+      key: 'gdp_per_capita',
+      label: 'PIB per capita',
+      category: 'economia',
+      source: 'Derivado de PIB e populacao',
+      unit: 'reais',
+      year: 2023,
+      value: gdpPerCapita,
+    }),
+    buildMetric({
+      key: 'demographic_density',
+      label: 'Densidade demografica',
+      category: 'demografia',
+      source: 'IBGE 1301/616',
+      unit: 'hab/km2',
+      year: 2010,
+      value: density?.value ?? null,
+    }),
+    buildMetric({
+      key: 'territory_area',
+      label: 'Area territorial',
+      category: 'demografia',
+      source: 'IBGE 1301/615',
+      unit: 'km2',
+      year: 2010,
+      value: area?.value ?? null,
+    }),
+    buildMetric({
+      key: 'literacy_rate',
+      label: 'Taxa de alfabetizacao',
+      category: 'educacao',
+      source: 'IBGE 1699/1646',
+      unit: '%',
+      year: 2010,
+      value: literacyRate?.value ?? null,
+    }),
+    buildMetric({
+      key: 'sewer_network_coverage',
+      label: 'Cobertura de esgoto em rede geral',
+      category: 'saude',
+      source: 'IBGE 3154/1000096',
+      unit: '%',
+      year: 2010,
+      value: sewerCoverage?.value ?? null,
+    }),
+    buildMetric({
+      key: 'homicide_rate_uf_proxy',
+      label: 'Mortalidade por homicidio (proxy UF)',
+      category: 'seguranca',
+      source: 'IBGE 899/2150',
+      unit: 'obitos/100 mil',
+      year: 2012,
+      value: ufHomicideRate?.value ?? null,
+      status: ufHomicideRate ? 'partial' : 'unavailable',
+      notes: 'Proxy por UF. Fonte municipal plugavel recomendada: SENASP/IPEA.',
+    }),
+    buildMetric({
+      key: 'traffic_mortality_uf_proxy',
+      label: 'Mortalidade no transito (proxy UF)',
+      category: 'saude',
+      source: 'IBGE 899/2151',
+      unit: 'obitos/100 mil',
+      year: 2012,
+      value: ufTrafficRate?.value ?? null,
+      status: ufTrafficRate ? 'partial' : 'unavailable',
+      notes: 'Proxy por UF.',
+    }),
+    buildMetric({
+      key: 'crime_rate',
+      label: 'Taxa de criminalidade municipal',
+      category: 'seguranca',
+      source: 'SENASP / Atlas da Violencia',
+      unit: 'ocorrencias/100 mil',
+      year: null,
+      value: null,
+      status: 'unavailable',
+      notes: 'Conector externo pendente.',
+    }),
+  ];
+
+  return {
+    cityCode,
+    cityName,
+    ufCode,
+    metrics,
+  };
 };
 
 export const fetchGeoJson = async (

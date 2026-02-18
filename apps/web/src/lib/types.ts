@@ -52,3 +52,24 @@ export type GeoJsonResponse = {
   geojson: GeoJSON.FeatureCollection;
 };
 
+export type ProfileMetricStatus = 'ok' | 'partial' | 'unavailable';
+
+export type CityProfileMetric = {
+  key: string;
+  label: string;
+  category: 'demografia' | 'economia' | 'educacao' | 'saude' | 'seguranca';
+  source: string;
+  unit: string;
+  year: number | null;
+  value: number | null;
+  status: ProfileMetricStatus;
+  notes?: string;
+};
+
+export type CityProfileResponse = {
+  cityCode: string;
+  cityName: string;
+  ufCode: string;
+  metrics: CityProfileMetric[];
+};
+

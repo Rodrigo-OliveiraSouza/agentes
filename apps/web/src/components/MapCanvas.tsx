@@ -231,7 +231,12 @@ export const MapCanvas = ({ geojson, points, mode, selectedCode, onSelect }: Map
   }
 
   if (loadError) {
-    return <div className="map-fallback">Falha ao carregar Google Maps.</div>;
+    console.error('Google Maps load error:', loadError);
+    return (
+      <div className="map-fallback">
+        Falha ao carregar Google Maps. Verifique API key, restricoes de dominio, Maps JavaScript API e billing.
+      </div>
+    );
   }
 
   if (!isLoaded) {

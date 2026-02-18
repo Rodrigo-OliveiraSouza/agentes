@@ -314,6 +314,20 @@ const App = () => {
     return [...filteredPoints].sort((a, b) => b.value - a.value);
   }, [filteredPoints]);
 
+  const mapStats = useMemo(() => {
+    if (!filteredPoints.length) return null;
+
+    const values = filteredPoints.map((item) => item.value);
+    const total = values.reduce((sum, value) => sum + value, 0);
+
+    return {
+      min: Math.min(...values),
+      max: Math.max(...values),
+      average: total / values.length,
+      count: values.length,
+    };
+  }, [filteredPoints]);
+
   const selectedPoint = useMemo(() => {
     if (!selectedCode) return null;
     return sortedPoints.find((point) => point.code === selectedCode) ?? null;
@@ -487,6 +501,7 @@ const App = () => {
             unit={indicatorUnitFrom(indicator, indicators)}
             levelLabel={levelLabel[level]}
             selectedCityCode={selectedCityCode}
+            mapStats={mapStats}
           />
         </main>
       </section>

@@ -21,6 +21,12 @@ type SidePanelProps = {
   unit: string;
   levelLabel: string;
   selectedCityCode: string | null;
+  mapStats: {
+    min: number;
+    max: number;
+    average: number;
+    count: number;
+  } | null;
 };
 
 const formatValue = (value: number | null, unit: string): string => {
@@ -43,12 +49,14 @@ export const SidePanel = ({
   unit,
   levelLabel,
   selectedCityCode,
+  mapStats,
 }: SidePanelProps) => {
   const [profile, setProfile] = useState<CityProfileResponse | null>(null);
   const [profileError, setProfileError] = useState<string>('');
   const [profileLoading, setProfileLoading] = useState(false);
   const [topSize, setTopSize] = useState<number>(10);
   const [selectedMetricKeys, setSelectedMetricKeys] = useState<string[]>([]);
+  const [cityChartMode, setCityChartMode] = useState<'normalized' | 'raw'>('normalized');
 
   useEffect(() => {
     if (!selectedCityCode) {
@@ -120,16 +128,60 @@ export const SidePanel = ({
     return visibleMetrics.filter((metric) => metric.value !== null);
   }, [visibleMetrics]);
 
-  const chartData = {
-    labels: chartMetrics.map((metric) => metric.label),
+  const cityChartItems = useMemo(() => {
+    const rows = chartMetrics.slice(0, topSize).map((metric) => ({
+      label: metric.label.length > 32 ? `${metric.label.slice(0, 32)}...` : metric.label,
+      rawLabel: metric.label,
+      rawValue: metric.value ?? 0,
+      unit: metric.unit,
+    }));
+
+    const rawValues = rows.map((row) => row.rawValue);
+    const min = rawValues.length ? Math.min(...rawValues) : 0;
+    const max = rawValues.length ? Math.max(...rawValues) : 0;
+    const span = max - min;
+
+    return rows.map((row) => ({
+      ...row,
+      normalizedValue: span > 0 ? ((row.rawValue - min) / span) * 100 : 50,
+    }));
+  }, [chartMetrics, topSize]);
+
+  const cityChartData = {
+    labels: cityChartItems.map((item) => item.label),
     datasets: [
       {
-        label: 'Indices selecionados',
-        data: chartMetrics.map((metric) => metric.value ?? 0),
-        backgroundColor: '#1e90ff',
+        label: cityChartMode === 'normalized' ? 'Score relativo (0-100)' : 'Valor do indicador',
+        data: cityChartItems.map((item) => (cityChartMode === 'normalized' ? item.normalizedValue : item.rawValue)),
+        backgroundColor: cityChartItems.map((item) =>
+          cityChartMode === 'normalized'
+            ? `hsl(${200 - (item.normalizedValue / 100) * 165}, 82%, 50%)`
+            : '#1e90ff',
+        ),
+        borderRadius: 6,
       },
     ],
   };
+
+  const panelChartData = useMemo(() => {
+    if (!mapStats) return null;
+
+    const labels = selected ? [selected.name, 'Media da area', 'Maximo da area'] : ['Media da area', 'Maximo da area'];
+    const data = selected ? [selected.value, mapStats.average, mapStats.max] : [mapStats.average, mapStats.max];
+    const colors = selected ? ['#0f62fe', '#5ba3f7', '#26a69a'] : ['#5ba3f7', '#26a69a'];
+
+    return {
+      labels: labels.map((label) => (label.length > 26 ? `${label.slice(0, 26)}...` : label)),
+      datasets: [
+        {
+          label: indicatorLabel,
+          data,
+          backgroundColor: colors,
+          borderRadius: 7,
+        },
+      ],
+    };
+  }, [mapStats, selected, indicatorLabel]);
 
   const toggleMetric = (key: string) => {
     setSelectedMetricKeys((current) => {
@@ -184,6 +236,40 @@ export const SidePanel = ({
           </>
         ) : (
           <p className="panel-empty">Selecione uma area no mapa para ver o valor.</p>
+        )}
+      </section>
+
+      <section className="panel-card panel-chart panel-chart-compact">
+        <h3>Grafico do painel</h3>
+        {panelChartData ? (
+          <Bar
+            data={panelChartData}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: (context) => {
+                      const value = typeof context.parsed.y === 'number' ? context.parsed.y : 0;
+                      return `${value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${unit}`.trim();
+                    },
+                  },
+                },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    callback: (value) => Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 }),
+                  },
+                },
+              },
+            }}
+          />
+        ) : (
+          <p className="panel-empty">Sem dados suficientes para o grafico do painel.</p>
         )}
       </section>
 
@@ -254,15 +340,64 @@ export const SidePanel = ({
       ) : null}
 
       <section className="panel-card panel-chart">
-        <h3>Grafico da cidade</h3>
+        <div className="panel-chart-head">
+          <h3>Grafico da cidade</h3>
+          <select
+            aria-label="Modo do grafico da cidade"
+            value={cityChartMode}
+            onChange={(event) => setCityChartMode(event.target.value as 'normalized' | 'raw')}
+          >
+            <option value="normalized">Comparativo (0-100)</option>
+            <option value="raw">Valor real</option>
+          </select>
+        </div>
         {chartMetrics.length ? (
           <Bar
-            data={chartData}
+            data={cityChartData}
             options={{
               responsive: true,
               maintainAspectRatio: false,
+              indexAxis: 'y',
               plugins: {
                 legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    title: (items) => {
+                      const index = items[0]?.dataIndex ?? 0;
+                      return cityChartItems[index]?.rawLabel ?? '';
+                    },
+                    label: (context) => {
+                      const index = context.dataIndex;
+                      const row = cityChartItems[index];
+                      if (!row) return '';
+                      const parsedValue = typeof context.parsed.x === 'number' ? context.parsed.x : 0;
+                      if (cityChartMode === 'normalized') {
+                        return `Score ${parsedValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} | ${formatValue(row.rawValue, row.unit)}`;
+                      }
+                      return formatValue(row.rawValue, row.unit);
+                    },
+                  },
+                },
+              },
+              scales: {
+                x: cityChartMode === 'normalized'
+                  ? {
+                      min: 0,
+                      max: 100,
+                      ticks: {
+                        callback: (value) => `${value}`,
+                      },
+                    }
+                  : {
+                      ticks: {
+                        callback: (value) => Number(value).toLocaleString('pt-BR', { notation: 'compact' }),
+                      },
+                    },
+                y: {
+                  ticks: {
+                    autoSkip: false,
+                  },
+                },
               },
             }}
           />

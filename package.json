@@ -1,0 +1,27 @@
+{
+  "name": "ibge-maps-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MVP plataforma de mapa interativo IBGE + Google Maps",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @ibge-map/web",
+    "dev:api": "npm run dev -w @ibge-map/api",
+    "build": "npm run build -w @ibge-map/api && npm run build -w @ibge-map/web",
+    "typecheck": "npm run typecheck -w @ibge-map/api && npm run typecheck -w @ibge-map/web",
+    "lint": "npm run lint -w @ibge-map/api && npm run lint -w @ibge-map/web",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate deploy --schema prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "prisma": "^6.4.1",
+    "typescript": "^5.7.3"
+  }
+}
+

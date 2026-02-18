@@ -1,0 +1,32 @@
+{
+  "name": "@ibge-map/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"No lint configured for Web\""
+  },
+  "dependencies": {
+    "@googlemaps/markerclusterer": "^2.6.0",
+    "@react-google-maps/api": "^2.20.7",
+    "@turf/turf": "^7.2.0",
+    "chart.js": "^4.4.8",
+    "react": "^18.3.1",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/google.maps": "^3.58.1",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.4.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0"
+  }
+}
+

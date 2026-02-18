@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TerritoryType {
+  REGIAO
+  UF
+  MUNICIPIO
+}
+
+model Dataset {
+  id          String    @id @default(cuid())
+  name        String
+  source      String
+  version     String
+  updatedAt   DateTime  @default(now()) @map("updated_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  indicators  Indicator[]
+
+  @@map("datasets")
+}
+
+model Territory {
+  id          String           @id @default(cuid())
+  type        TerritoryType
+  ibgeCode    String           @unique @map("ibge_code")
+  name        String
+  parentId    String?          @map("parent_id")
+  parent      Territory?       @relation("TerritoryToTerritory", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Territory[]      @relation("TerritoryToTerritory")
+  values      IndicatorValue[]
+  geometries  Geometry[]
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @default(now()) @map("updated_at")
+
+  @@index([type])
+  @@index([parentId])
+  @@map("territories")
+}
+
+model Indicator {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  label       String
+  unit        String
+  source      String
+  datasetId   String?          @map("dataset_id")
+  dataset     Dataset?         @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+  values      IndicatorValue[]
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @default(now()) @map("updated_at")
+
+  @@map("indicators")
+}
+
+model IndicatorValue {
+  id          String      @id @default(cuid())
+  territoryId String      @map("territory_id")
+  territory   Territory   @relation(fields: [territoryId], references: [id], onDelete: Cascade)
+  indicatorId String      @map("indicator_id")
+  indicator   Indicator   @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+  year        Int
+  value       Decimal     @db.Decimal(20, 6)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @default(now()) @map("updated_at")
+
+  @@unique([territoryId, indicatorId, year])
+  @@index([indicatorId, year])
+  @@index([territoryId, year])
+  @@map("indicator_values")
+}
+
+model Geometry {
+  id            String      @id @default(cuid())
+  territoryId   String      @map("territory_id")
+  territory     Territory   @relation(fields: [territoryId], references: [id], onDelete: Cascade)
+  geojson       Json
+  simplified    Boolean     @default(true)
+  bbox          Json?
+  hash          String
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @default(now()) @map("updated_at")
+
+  @@index([territoryId, simplified])
+  @@unique([territoryId, hash])
+  @@map("geometries")
+}
+
+model CacheRequest {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  params      Json
+  payload     Json
+  expiresAt   DateTime  @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @map("updated_at")
+
+  @@index([expiresAt])
+  @@map("cache_requests")
+}
+

@@ -22,6 +22,15 @@ app.use(
 );
 app.use('/api/*', rateLimitMiddleware());
 
+app.get('/', (c) => {
+  return c.json({
+    ok: true,
+    service: 'ibge-map-api',
+    message: 'API online. Use /health ou /api/*',
+    routes: ['/health', '/api/territories', '/api/indicators', '/api/data', '/api/geojson'],
+  });
+});
+
 app.get('/health', (c) => {
   return c.json({
     ok: true,
@@ -34,6 +43,18 @@ app.route('/api/territories', territoriesRoute);
 app.route('/api/indicators', indicatorsRoute);
 app.route('/api/data', dataRoute);
 app.route('/api/geojson', geojsonRoute);
+
+app.notFound((c) => {
+  return c.json(
+    {
+      error: {
+        code: 'NOT_FOUND',
+        message: 'Rota não encontrada.',
+      },
+    },
+    404,
+  );
+});
 
 app.onError((error) => {
   return toErrorResponse(error);

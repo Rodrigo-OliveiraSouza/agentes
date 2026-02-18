@@ -54,25 +54,30 @@ const parseStoredPayload = (raw: unknown): CachedPayload | null => {
 };
 
 const readFromPostgres = async (env: AppBindings, key: string): Promise<CachedPayload | null> => {
-  const sql = getSql(env);
-  if (!sql) return null;
+  try {
+    const sql = getSql(env);
+    if (!sql) return null;
 
-  const rows = await sql`
-    SELECT payload, expires_at
-    FROM cache_requests
-    WHERE key = ${key}
-    LIMIT 1
-  `;
+    const rows = await sql`
+      SELECT payload, expires_at
+      FROM cache_requests
+      WHERE key = ${key}
+      LIMIT 1
+    `;
 
-  if (!rows.length) return null;
+    if (!rows.length) return null;
 
-  const row = rows[0] as { payload: unknown; expires_at: string };
-  const expiresAt = new Date(row.expires_at).getTime();
-  if (Number.isFinite(expiresAt) && expiresAt <= Date.now()) {
+    const row = rows[0] as { payload: unknown; expires_at: string };
+    const expiresAt = new Date(row.expires_at).getTime();
+    if (Number.isFinite(expiresAt) && expiresAt <= Date.now()) {
+      return null;
+    }
+
+    return parseStoredPayload(row.payload);
+  } catch (error) {
+    console.warn('Postgres cache read failed, continuing without DB cache.', error);
     return null;
   }
-
-  return parseStoredPayload(row.payload);
 };
 
 const writeToPostgres = async (
@@ -82,20 +87,24 @@ const writeToPostgres = async (
   payload: CachedPayload,
   ttlSeconds: number,
 ): Promise<void> => {
-  const sql = getSql(env);
-  if (!sql) return;
+  try {
+    const sql = getSql(env);
+    if (!sql) return;
 
-  const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
-  await sql`
-    INSERT INTO cache_requests (key, params, payload, expires_at, updated_at)
-    VALUES (${key}, ${JSON.stringify(params)}, ${JSON.stringify(payload)}, ${expiresAt}, NOW())
-    ON CONFLICT (key)
-    DO UPDATE SET
-      params = EXCLUDED.params,
-      payload = EXCLUDED.payload,
-      expires_at = EXCLUDED.expires_at,
-      updated_at = NOW()
-  `;
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
+    await sql`
+      INSERT INTO cache_requests (key, params, payload, expires_at, updated_at)
+      VALUES (${key}, ${JSON.stringify(params)}, ${JSON.stringify(payload)}, ${expiresAt}, NOW())
+      ON CONFLICT (key)
+      DO UPDATE SET
+        params = EXCLUDED.params,
+        payload = EXCLUDED.payload,
+        expires_at = EXCLUDED.expires_at,
+        updated_at = NOW()
+    `;
+  } catch (error) {
+    console.warn('Postgres cache write failed, continuing without DB cache.', error);
+  }
 };
 
 export const cachedJson = async <T extends CachedPayload>(

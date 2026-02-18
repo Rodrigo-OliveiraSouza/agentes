@@ -39,11 +39,11 @@ const mapOptions: google.maps.MapOptions = {
   gestureHandling: 'greedy',
 };
 
-const mapLibraries: 'visualization'[] = ['visualization'];
-
 const clamp = (value: number, min: number, max: number): number => {
   return Math.min(max, Math.max(min, value));
 };
+
+const HEATMAP_COLORS = ['#eff6ff', '#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e3a8a'];
 
 const colorFor = (value: number, min: number, max: number): string => {
   if (max <= min) return 'hsl(200, 86%, 62%)';
@@ -54,20 +54,20 @@ const colorFor = (value: number, min: number, max: number): string => {
 };
 
 const heatmapColorFor = (value: number, min: number, max: number): string => {
-  if (max <= min) return 'hsl(214, 85%, 48%)';
+  if (max <= min) return HEATMAP_COLORS[HEATMAP_COLORS.length - 1];
   const ratio = clamp((value - min) / (max - min), 0, 1);
-  const lightness = 95 - ratio * 66;
-  return `hsl(214, 85%, ${Math.round(lightness)}%)`;
+  const index = Math.round(ratio * (HEATMAP_COLORS.length - 1));
+  return HEATMAP_COLORS[index];
 };
 
 const areaOpacityFor = (mode: ViewMode): number => {
   if (mode === 'choropleth') return 0.82;
-  if (mode === 'heatmap') return 0.92;
+  if (mode === 'heatmap') return 0.94;
   return 0.12;
 };
 
 const heatmapOpacityForZoom = (zoom: number): number => {
-  return clamp(0.86 + (zoom - 4) * 0.02, 0.86, 0.96);
+  return clamp(0.9 + (zoom - 4) * 0.015, 0.9, 0.97);
 };
 
 const boundaryWeightFor = (mode: ViewMode, zoom: number, isSelected: boolean): number => {
@@ -89,7 +89,6 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
-    libraries: mapLibraries,
     id: 'ibge-map-loader',
   });
 
@@ -167,10 +166,21 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
     map.data.setStyle((feature) => {
       const code = String(feature.getProperty('codarea') ?? '');
       const point = pointsByCode.get(code);
-      const value = point?.value ?? 0;
+      const hasValue = typeof point?.value === 'number' && Number.isFinite(point.value);
+      const value = hasValue ? point!.value : null;
       const isSelected = selectedCode === code;
-      const fillColor = mode === 'heatmap' ? heatmapColorFor(value, min, max) : colorFor(value, min, max);
-      const fillOpacity = mode === 'heatmap' ? heatmapOpacityForZoom(currentZoom) : areaOpacityFor(mode);
+      const fillColor =
+        value === null
+          ? '#e5e7eb'
+          : mode === 'heatmap'
+            ? heatmapColorFor(value, min, max)
+            : colorFor(value, min, max);
+      const fillOpacity =
+        value === null
+          ? 0.45
+          : mode === 'heatmap'
+            ? heatmapOpacityForZoom(currentZoom)
+            : areaOpacityFor(mode);
 
       return {
         fillColor,
@@ -238,7 +248,7 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
 
   const legendGradient = useMemo(() => {
     if (mode === 'heatmap') {
-      return 'linear-gradient(90deg, hsl(214, 85%, 95%), hsl(214, 85%, 78%), hsl(214, 85%, 55%), hsl(214, 85%, 30%))';
+      return 'linear-gradient(90deg, #eff6ff, #bfdbfe, #93c5fd, #60a5fa, #3b82f6, #2563eb, #1d4ed8, #1e3a8a)';
     }
 
     return 'linear-gradient(90deg, hsl(210, 88%, 84%), hsl(145, 88%, 60%), hsl(60, 88%, 54%), hsl(20, 88%, 45%))';
@@ -324,6 +334,12 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
             <span>Media {average.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
             <span>Max {max.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
           </div>
+          {mode === 'heatmap' ? (
+            <div className="map-legend-row">
+              <span>Mais claro = menor indice</span>
+              <span>Mais escuro = maior indice</span>
+            </div>
+          ) : null}
           <div className="map-legend-row">
             <span>Zoom {currentZoom}</span>
             <span>

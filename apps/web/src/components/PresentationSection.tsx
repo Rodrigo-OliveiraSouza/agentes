@@ -24,17 +24,30 @@ const carouselSlides: Slide[] = Object.entries(carouselModules)
 
 const features = [
   {
-    title: 'Mapa em camadas',
-    text: 'Navegue por regiao, UF e municipio com sobreposicao de dados oficiais.',
+    title: 'Sobre o observatorio',
+    text: 'Plataforma para leitura territorial de desigualdades e monitoramento de indicadores sociais.',
   },
   {
-    title: 'Indicadores comparaveis',
-    text: 'Troque indicador, periodo e visualizacao para encontrar padroes territoriais.',
+    title: 'Como usar',
+    text: 'Escolha indicador, nivel territorial e ano para comparar municipios, UFs e regioes.',
   },
   {
-    title: 'Painel por cidade',
-    text: 'Clique no municipio para ver os principais indices em tabela e grafico.',
+    title: 'Transparencia',
+    text: 'Cada indicador mostra a fonte de origem (IBGE e conectores publicos complementares).',
   },
+];
+
+const institutionPillars = [
+  'Equidade racial em politicas publicas',
+  'Acesso transparente a indicadores territoriais',
+  'Evidencias para tomada de decisao local',
+];
+
+const palette = [
+  { name: 'Verde institucional', color: '#136c3a' },
+  { name: 'Dourado cidadania', color: '#f3b61f' },
+  { name: 'Terracota diversidade', color: '#b64b2b' },
+  { name: 'Azul dados publicos', color: '#1f5a94' },
 ];
 
 export const PresentationSection = () => {
@@ -76,19 +89,28 @@ export const PresentationSection = () => {
     <section className="presentation-section">
       <div className="presentation-grid">
         <div className="presentation-copy">
-          <p className="presentation-kicker">Ministerio Interracial do GOLF</p>
-          <h1>Plataforma de mapa interativo para leitura territorial e social</h1>
+          <p className="presentation-kicker">Ministerio da Igualdade Racial</p>
+          <h1>Observatorio territorial de indicadores para equidade racial</h1>
           <p className="presentation-text">
-            Esta plataforma conecta mapa, filtros e indicadores para apoiar analise territorial, planejamento e tomada
-            de decisao com dados publicos.
+            Esta plataforma reune dados geograficos e socioeconomicos para apoiar diagnostico territorial, monitorar
+            desigualdades e orientar politicas publicas com foco em igualdade racial.
           </p>
           <p className="presentation-text">
-            Selecione uma cidade, compare metricas e visualize resultados em choropleth, bolhas, heatmap ou clusters.
+            O mapa permite comparar municipios, UFs e regioes em diferentes camadas de visualizacao, com painel de
+            detalhes e rastreabilidade da fonte de cada indicador.
           </p>
 
           <div className="presentation-actions">
             <a className="presentation-button" href="#mapa">
-              Ir para o mapa
+              Entrar no painel de mapas
+            </a>
+            <a
+              className="presentation-link"
+              href="https://www.gov.br/igualdaderacial/pt-br"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Site institucional do ministerio
             </a>
             <span className="presentation-folder">Pasta do carrossel: `apps/web/src/assets/carousel`</span>
           </div>
@@ -100,6 +122,27 @@ export const PresentationSection = () => {
                 <p>{item.text}</p>
               </article>
             ))}
+          </div>
+
+          <div className="presentation-pillars">
+            <p className="presentation-pillar-title">Compromissos da instituicao</p>
+            {institutionPillars.map((pillar) => (
+              <p key={pillar} className="presentation-pillar-item">
+                {pillar}
+              </p>
+            ))}
+          </div>
+
+          <div className="presentation-palette">
+            <p className="presentation-pillar-title">Paleta institucional aplicada</p>
+            <div className="palette-grid">
+              {palette.map((item) => (
+                <div key={item.name} className="palette-card">
+                  <span className="palette-color" style={{ background: item.color }} />
+                  <span>{item.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

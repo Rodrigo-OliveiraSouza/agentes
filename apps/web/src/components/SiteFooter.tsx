@@ -3,13 +3,13 @@ import logoPlataforma from '../assets/logos/logo-plataforma.svg';
 
 const footerLinks = [
   {
-    name: 'Ministerio Interracial do GOLF',
-    href: 'https://agentes-1sv.pages.dev',
+    name: 'Ministerio da Igualdade Racial',
+    href: 'https://www.gov.br/igualdaderacial/pt-br',
     logo: logoMinisterio,
   },
   {
-    name: 'Portal IBGE',
-    href: 'https://www.ibge.gov.br',
+    name: 'Observatorio de Indicadores',
+    href: 'https://agentes-1sv.pages.dev',
     logo: logoPlataforma,
   },
 ];
@@ -18,7 +18,7 @@ export const SiteFooter = () => {
   return (
     <footer className="site-footer">
       <div className="footer-inner">
-        <p>Mapa tematico com base em dados publicos e visualizacao interativa para analise territorial.</p>
+        <p>Ministerio da Igualdade Racial | Plataforma de indicadores territoriais com dados publicos.</p>
         <div className="footer-logo-links">
           {footerLinks.map((item) => (
             <a key={item.name} href={item.href} target="_blank" rel="noreferrer" aria-label={item.name}>

@@ -350,7 +350,28 @@ const App = () => {
       <PresentationSection />
 
       <section id="mapa" className="map-shell">
-        <header className="topbar">
+        <div className="map-shell-inner">
+          <div className="map-governance">
+            <div className="map-governance-inner">
+              <p>gov.br | painel territorial de indicadores</p>
+              <div className="map-governance-links">
+                <a href="#governanca-acessibilidade">Acessibilidade</a>
+                <a href="#governanca-politica-dados">Politica de Dados</a>
+                <a href="#governanca-lgpd">LGPD</a>
+              </div>
+            </div>
+          </div>
+
+          <header className="map-header">
+            <p className="map-header-kicker">Monitoramento de politicas publicas</p>
+            <h2>Mapa e analise territorial</h2>
+            <p>
+              Consulte indicadores oficiais por municipio, compare territorios e acompanhe recortes de desigualdade
+              com rastreabilidade de fonte.
+            </p>
+          </header>
+
+          <header className="topbar">
           <div className="filter-group">
             <label>Indicador</label>
             <select
@@ -474,43 +495,44 @@ const App = () => {
               ))}
             </select>
           </div>
-        </header>
+          </header>
 
-        {errorMessage ? <div className="error-banner">{errorMessage}</div> : null}
-        {loading ? <div className="loading-banner">Carregando dados...</div> : null}
-        {level === 'MUNICIPIO' && !ufCode ? (
-          <div className="loading-banner">Selecione uma UF para carregar municipios.</div>
-        ) : null}
+          {errorMessage ? <div className="error-banner">{errorMessage}</div> : null}
+          {loading ? <div className="loading-banner">Carregando dados...</div> : null}
+          {level === 'MUNICIPIO' && !ufCode ? (
+            <div className="loading-banner">Selecione uma UF para carregar municipios.</div>
+          ) : null}
 
-        <main className="content">
-          <section className="map-area">
-            <MapCanvas
-              geojson={geojsonPayload?.geojson ?? null}
-              points={sortedPoints}
-              mode={viewMode}
+          <main className="content">
+            <section className="map-area">
+              <MapCanvas
+                geojson={geojsonPayload?.geojson ?? null}
+                points={sortedPoints}
+                mode={viewMode}
+                unit={indicatorUnitFrom(indicator, indicators)}
+                selectedCode={selectedCode}
+                onSelect={handleMapSelect}
+              />
+            </section>
+
+            <SidePanel
+              selected={selectedPoint}
+              indicatorLabel={indicatorLabelFrom(indicator, indicators)}
+              indicatorSource={indicatorSourceFrom(indicator, indicators)}
+              indicatorSourceUrl={indicatorSourceUrlFrom(indicator, indicators)}
               unit={indicatorUnitFrom(indicator, indicators)}
-              selectedCode={selectedCode}
-              onSelect={handleMapSelect}
+              levelLabel={levelLabel[level]}
             />
-          </section>
+          </main>
 
-          <SidePanel
+          <MetricsChartsPanel
             selected={selectedPoint}
             indicatorLabel={indicatorLabelFrom(indicator, indicators)}
-            indicatorSource={indicatorSourceFrom(indicator, indicators)}
-            indicatorSourceUrl={indicatorSourceUrlFrom(indicator, indicators)}
             unit={indicatorUnitFrom(indicator, indicators)}
-            levelLabel={levelLabel[level]}
+            selectedCityCode={selectedCityCode}
+            mapStats={mapStats}
           />
-        </main>
-
-        <MetricsChartsPanel
-          selected={selectedPoint}
-          indicatorLabel={indicatorLabelFrom(indicator, indicators)}
-          unit={indicatorUnitFrom(indicator, indicators)}
-          selectedCityCode={selectedCityCode}
-          mapStats={mapStats}
-        />
+        </div>
       </section>
 
       <SiteFooter />

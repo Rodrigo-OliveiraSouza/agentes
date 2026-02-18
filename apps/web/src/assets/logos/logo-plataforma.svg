@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="120" viewBox="0 0 360 120" role="img" aria-label="Portal IBGE">
+  <defs>
+    <linearGradient id="logoB" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d7874"/>
+      <stop offset="100%" stop-color="#3aa17e"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="120" rx="18" fill="#ffffff"/>
+  <rect x="24" y="24" width="64" height="64" rx="14" fill="url(#logoB)"/>
+  <path d="M36 56 H76 M56 36 V76" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <text x="106" y="56" fill="#154f59" font-size="19" font-family="Segoe UI, Arial, sans-serif" font-weight="700">Dados Oficiais</text>
+  <text x="106" y="84" fill="#1d7874" font-size="16" font-family="Segoe UI, Arial, sans-serif">Portal IBGE</text>
+</svg>

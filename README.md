@@ -170,6 +170,12 @@ Terminal 2 (Web):
 npm run dev:web
 ```
 
+## Apresentacao e carrossel (Web)
+
+- A capa do site fica antes do mapa, em `apps/web/src/components/PresentationSection.tsx`.
+- Todas as imagens da pasta `apps/web/src/assets/carousel` entram automaticamente no carrossel.
+- Logos e links do rodape ficam em `apps/web/src/components/SiteFooter.tsx`.
+
 ## Deploy
 
 ### 1) GitHub + CI

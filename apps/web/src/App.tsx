@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapCanvas } from './components/MapCanvas';
 import { SidePanel } from './components/SidePanel';
+import { PresentationSection } from './components/PresentationSection';
+import { SiteFooter } from './components/SiteFooter';
 import { api } from './lib/api';
 import type {
   DataResponse,
@@ -283,156 +285,162 @@ const App = () => {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="filter-group">
-          <label>Indicador</label>
-          <select
-            value={indicator}
-            onChange={(event) => {
-              const nextSlug = event.target.value;
-              const nextIndicator = indicators.find((item) => item.slug === nextSlug);
-              setFilter({
-                indicator: nextSlug,
-                municipalityCode: '',
-                year: nextIndicator?.defaultYear ?? year,
-              });
-            }}
-          >
-            {indicators.map((item) => (
-              <option key={item.slug} value={item.slug} disabled={!item.supported}>
-                {item.label}
-                {!item.supported ? ' (em breve)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
+      <PresentationSection />
 
-        <div className="filter-group">
-          <label>Nivel</label>
-          <select
-            value={level}
-            onChange={(event) =>
-              setFilter({
-                level: event.target.value as TerritoryLevel,
-                municipalityCode: '',
-                search: '',
-              })
-            }
-          >
-            <option value="REGIAO">Regiao</option>
-            <option value="UF">UF</option>
-            <option value="MUNICIPIO">Municipio</option>
-          </select>
-        </div>
+      <section id="mapa" className="map-shell">
+        <header className="topbar">
+          <div className="filter-group">
+            <label>Indicador</label>
+            <select
+              value={indicator}
+              onChange={(event) => {
+                const nextSlug = event.target.value;
+                const nextIndicator = indicators.find((item) => item.slug === nextSlug);
+                setFilter({
+                  indicator: nextSlug,
+                  municipalityCode: '',
+                  year: nextIndicator?.defaultYear ?? year,
+                });
+              }}
+            >
+              {indicators.map((item) => (
+                <option key={item.slug} value={item.slug} disabled={!item.supported}>
+                  {item.label}
+                  {!item.supported ? ' (em breve)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="filter-group">
-          <label>Regiao</label>
-          <select
-            value={regionCode}
-            onChange={(event) =>
-              setFilter({
-                regionCode: event.target.value,
-                ufCode: '',
-                municipalityCode: '',
-              })
-            }
-          >
-            <option value="">Brasil</option>
-            {regions.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </div>
+          <div className="filter-group">
+            <label>Nivel</label>
+            <select
+              value={level}
+              onChange={(event) =>
+                setFilter({
+                  level: event.target.value as TerritoryLevel,
+                  municipalityCode: '',
+                  search: '',
+                })
+              }
+            >
+              <option value="REGIAO">Regiao</option>
+              <option value="UF">UF</option>
+              <option value="MUNICIPIO">Municipio</option>
+            </select>
+          </div>
 
-        <div className="filter-group">
-          <label>UF</label>
-          <select value={ufCode} onChange={(event) => setFilter({ ufCode: event.target.value, municipalityCode: '' })}>
-            <option value="">Todas</option>
-            {ufs.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.uf ? `${item.uf} - ${item.name}` : item.name}
-              </option>
-            ))}
-          </select>
-        </div>
+          <div className="filter-group">
+            <label>Regiao</label>
+            <select
+              value={regionCode}
+              onChange={(event) =>
+                setFilter({
+                  regionCode: event.target.value,
+                  ufCode: '',
+                  municipalityCode: '',
+                })
+              }
+            >
+              <option value="">Brasil</option>
+              {regions.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="filter-group">
-          <label>Municipio</label>
-          <select
-            value={municipalityCode}
-            onChange={(event) => setFilter({ municipalityCode: event.target.value })}
-            disabled={!ufCode}
-          >
-            <option value="">Todos</option>
-            {municipalities.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </div>
+          <div className="filter-group">
+            <label>UF</label>
+            <select value={ufCode} onChange={(event) => setFilter({ ufCode: event.target.value, municipalityCode: '' })}>
+              <option value="">Todas</option>
+              {ufs.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.uf ? `${item.uf} - ${item.name}` : item.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="filter-group narrow">
-          <label>Ano</label>
-          <input
-            type="number"
-            min={yearMin}
-            max={yearMax}
-            value={year}
-            disabled={yearLocked}
-            onChange={(event) => setFilter({ year: Number(event.target.value) })}
+          <div className="filter-group">
+            <label>Municipio</label>
+            <select
+              value={municipalityCode}
+              onChange={(event) => setFilter({ municipalityCode: event.target.value })}
+              disabled={!ufCode}
+            >
+              <option value="">Todos</option>
+              {municipalities.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group narrow">
+            <label>Ano</label>
+            <input
+              type="number"
+              min={yearMin}
+              max={yearMax}
+              value={year}
+              disabled={yearLocked}
+              onChange={(event) => setFilter({ year: Number(event.target.value) })}
+            />
+          </div>
+
+          <div className="filter-group wide">
+            <label>Busca</label>
+            <input
+              type="text"
+              value={search}
+              onChange={(event) => setFilter({ search: event.target.value })}
+              placeholder="Cidade/UF"
+            />
+          </div>
+
+          <div className="filter-group">
+            <label>Visualizacao</label>
+            <select value={viewMode} onChange={(event) => setFilter({ viewMode: event.target.value as ViewMode })}>
+              {modeOptions.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode}
+                </option>
+              ))}
+            </select>
+          </div>
+        </header>
+
+        {errorMessage ? <div className="error-banner">{errorMessage}</div> : null}
+        {loading ? <div className="loading-banner">Carregando dados...</div> : null}
+        {level === 'MUNICIPIO' && !ufCode ? (
+          <div className="loading-banner">Selecione uma UF para carregar municipios.</div>
+        ) : null}
+
+        <main className="content">
+          <section className="map-area">
+            <MapCanvas
+              geojson={geojsonPayload?.geojson ?? null}
+              points={sortedPoints}
+              mode={viewMode}
+              selectedCode={selectedCode}
+              onSelect={(code) => setSelectedCode(code)}
+            />
+          </section>
+
+          <SidePanel
+            selected={selectedPoint}
+            indicatorLabel={indicatorLabelFrom(indicator, indicators)}
+            unit={indicatorUnitFrom(indicator, indicators)}
+            levelLabel={levelLabel[level]}
+            selectedCityCode={selectedCityCode}
           />
-        </div>
+        </main>
+      </section>
 
-        <div className="filter-group wide">
-          <label>Busca</label>
-          <input
-            type="text"
-            value={search}
-            onChange={(event) => setFilter({ search: event.target.value })}
-            placeholder="Cidade/UF"
-          />
-        </div>
-
-        <div className="filter-group">
-          <label>Visualizacao</label>
-          <select value={viewMode} onChange={(event) => setFilter({ viewMode: event.target.value as ViewMode })}>
-            {modeOptions.map((mode) => (
-              <option key={mode} value={mode}>
-                {mode}
-              </option>
-            ))}
-          </select>
-        </div>
-      </header>
-
-      {errorMessage ? <div className="error-banner">{errorMessage}</div> : null}
-      {loading ? <div className="loading-banner">Carregando dados...</div> : null}
-      {level === 'MUNICIPIO' && !ufCode ? (
-        <div className="loading-banner">Selecione uma UF para carregar municipios.</div>
-      ) : null}
-
-      <main className="content">
-        <section className="map-area">
-          <MapCanvas
-            geojson={geojsonPayload?.geojson ?? null}
-            points={sortedPoints}
-            mode={viewMode}
-            selectedCode={selectedCode}
-            onSelect={(code) => setSelectedCode(code)}
-          />
-        </section>
-
-        <SidePanel
-          selected={selectedPoint}
-          indicatorLabel={indicatorLabelFrom(indicator, indicators)}
-          unit={indicatorUnitFrom(indicator, indicators)}
-          levelLabel={levelLabel[level]}
-          selectedCityCode={selectedCityCode}
-        />
-      </main>
+      <SiteFooter />
     </div>
   );
 };

@@ -69,14 +69,32 @@ export const INDICATORS: IndicatorDefinition[] = [
     defaultYear: 2010,
   },
   {
-    slug: 'territory_area',
-    label: 'Area territorial',
-    unit: 'km2',
-    source: 'IBGE Censo Demografico (agregado 1301, variavel 615)',
+    slug: 'literacy_rate',
+    label: 'Taxa de alfabetizacao',
+    unit: '%',
+    source: 'IBGE Censo Demografico (agregado 1699, variavel 1646, classificacao 2[6794])',
     supported: true,
     yearMin: 2010,
     yearMax: 2010,
     defaultYear: 2010,
+  },
+  {
+    slug: 'sewer_network_coverage',
+    label: 'Cobertura de rede de esgoto',
+    unit: '%',
+    source: 'IBGE Saneamento (agregado 3154, variavel 1000096, classificacao 299[10941])',
+    supported: true,
+    yearMin: 2010,
+    yearMax: 2010,
+    defaultYear: 2010,
+  },
+  {
+    slug: 'territory_area',
+    label: 'Area territorial',
+    unit: 'km2',
+    source: 'IBGE Censo Demografico (agregado 1301, variavel 615)',
+    supported: false,
+    notes: 'Indicador complementar, fora do foco dos 5 principais.',
   },
   {
     slug: 'idh',
@@ -125,14 +143,6 @@ export const INDICATORS: IndicatorDefinition[] = [
     source: 'IBGE/SIDRA (planejado)',
     supported: false,
     notes: 'Conector planejado para vulnerabilidade social.',
-  },
-  {
-    slug: 'literacy_rate',
-    label: 'Taxa de alfabetizacao',
-    unit: '%',
-    source: 'IBGE Censo (planejado para camada de mapa)',
-    supported: false,
-    notes: 'Ja usado no painel de cidade; camada territorial ainda pendente.',
   },
   {
     slug: 'school_attendance_rate',
@@ -189,14 +199,6 @@ export const INDICATORS: IndicatorDefinition[] = [
     source: 'IBGE Saneamento (planejado)',
     supported: false,
     notes: 'Conector planejado para infraestrutura urbana.',
-  },
-  {
-    slug: 'sewer_network_coverage',
-    label: 'Cobertura de rede de esgoto',
-    unit: '%',
-    source: 'IBGE Saneamento (planejado)',
-    supported: false,
-    notes: 'Conector planejado para saneamento.',
   },
   {
     slug: 'garbage_collection_coverage',
@@ -479,6 +481,24 @@ export const fetchIndicatorData = async (
         code,
         aggregateId: TERRITORY_AGGREGATE,
         variableId: DEMOGRAPHIC_DENSITY_VARIABLE,
+      });
+    case 'literacy_rate':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: LITERACY_AGGREGATE,
+        variableId: LITERACY_RATE_VARIABLE,
+        classificationQuery: LITERACY_CLASSIFICATIONS,
+      });
+    case 'sewer_network_coverage':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: SANITATION_AGGREGATE,
+        variableId: SANITATION_SEWER_RATE_VARIABLE,
+        classificationQuery: SANITATION_CLASSIFICATIONS,
       });
     case 'territory_area':
       return fetchAggregateSeries({

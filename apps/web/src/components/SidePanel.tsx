@@ -147,58 +147,63 @@ export const SidePanel = ({
 
   return (
     <aside className="side-panel">
-      <h2>Painel</h2>
+      <div className="panel-head">
+        <h2>Painel</h2>
+        <p className="panel-subtitle">Leitura rapida do territorio selecionado.</p>
+      </div>
 
-      <div className="panel-block">
+      <section className="panel-card panel-card-highlight">
         <p className="panel-label">Indicador do mapa</p>
-        <p>{indicatorLabel}</p>
-        <p className="panel-label">Fonte</p>
-        {indicatorSourceUrl ? (
-          <p>
-            <a href={indicatorSourceUrl} target="_blank" rel="noreferrer">
-              {indicatorSource}
-            </a>
-          </p>
-        ) : (
-          <p>{indicatorSource}</p>
-        )}
-      </div>
+        <p className="panel-main-text">{indicatorLabel}</p>
+        <div className="panel-meta-grid">
+          <div className="panel-meta-item">
+            <p className="panel-label">Nivel</p>
+            <p className="panel-pill">{levelLabel}</p>
+          </div>
+          <div className="panel-meta-item">
+            <p className="panel-label">Fonte</p>
+            {indicatorSourceUrl ? (
+              <a className="panel-link" href={indicatorSourceUrl} target="_blank" rel="noreferrer">
+                {indicatorSource}
+              </a>
+            ) : (
+              <p className="panel-main-text">{indicatorSource}</p>
+            )}
+          </div>
+        </div>
+      </section>
 
-      <div className="panel-block">
-        <p className="panel-label">Nivel</p>
-        <p>{levelLabel}</p>
-      </div>
-
-      <div className="panel-block">
+      <section className="panel-card">
         <p className="panel-label">Selecionado no mapa</p>
         {selected ? (
           <>
-            <p>{selected.name}</p>
+            <p className="panel-selected-name">{selected.name}</p>
             <p className="panel-value">
               {selected.value.toLocaleString('pt-BR')} {unit}
             </p>
           </>
         ) : (
-          <p>Selecione uma area no mapa.</p>
+          <p className="panel-empty">Selecione uma area no mapa para ver o valor.</p>
         )}
-      </div>
+      </section>
 
-      <div className="panel-block">
-        <p className="panel-label">Perfil da cidade</p>
-        {!selectedCityCode ? <p>Entre em nivel Municipio e clique em uma cidade.</p> : null}
-        {profileLoading ? <p>Carregando perfil...</p> : null}
-        {profileError ? <p>{profileError}</p> : null}
+      <section className="panel-card">
+        <div className="panel-card-title-row">
+          <p className="panel-label">Perfil da cidade</p>
+          {profile ? <span className="panel-pill">{visibleMetrics.length} indices</span> : null}
+        </div>
+
+        {!selectedCityCode ? <p className="panel-empty">Entre em nivel Municipio e clique em uma cidade.</p> : null}
+        {profileLoading ? <p className="panel-empty">Carregando perfil...</p> : null}
+        {profileError ? <p className="panel-error">{profileError}</p> : null}
+
         {profile ? (
           <>
             <p className="panel-value">{profile.cityName}</p>
             <label className="panel-label" htmlFor="top-size">
               Quantidade de indices
             </label>
-            <select
-              id="top-size"
-              value={topSize}
-              onChange={(event) => setTopSize(Number(event.target.value))}
-            >
+            <select id="top-size" value={topSize} onChange={(event) => setTopSize(Number(event.target.value))}>
               <option value={5}>Top 5</option>
               <option value={10}>Top 10</option>
             </select>
@@ -216,10 +221,10 @@ export const SidePanel = ({
             </div>
           </>
         ) : null}
-      </div>
+      </section>
 
       {profile ? (
-        <div className="panel-block">
+        <section className="panel-card">
           <p className="panel-label">Tabela de indices</p>
           <div className="metric-table-wrap">
             <table className="metric-table">
@@ -245,10 +250,10 @@ export const SidePanel = ({
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       ) : null}
 
-      <div className="panel-chart">
+      <section className="panel-card panel-chart">
         <h3>Grafico da cidade</h3>
         {chartMetrics.length ? (
           <Bar
@@ -262,9 +267,9 @@ export const SidePanel = ({
             }}
           />
         ) : (
-          <p>Sem dados numericos selecionados.</p>
+          <p className="panel-empty">Sem dados numericos selecionados.</p>
         )}
-      </div>
+      </section>
     </aside>
   );
 };

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { MapCanvas } from './components/MapCanvas';
+import { SidePanel } from './components/SidePanel';
 import { api } from './lib/api';
 import type {
   DataResponse,
@@ -10,13 +12,11 @@ import type {
   ViewMode,
 } from './lib/types';
 import { useFilterStore } from './store/useFilterStore';
-import { MapCanvas } from './components/MapCanvas';
-import { SidePanel } from './components/SidePanel';
 
 const levelLabel: Record<TerritoryLevel, string> = {
-  REGIAO: 'Região',
+  REGIAO: 'Regiao',
   UF: 'UF',
-  MUNICIPIO: 'Município',
+  MUNICIPIO: 'Municipio',
 };
 
 const modeOptions: ViewMode[] = ['choropleth', 'bubbles', 'heatmap', 'clusters'];
@@ -93,6 +93,16 @@ const App = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
 
+  const selectedIndicator = useMemo(
+    () => indicators.find((item) => item.slug === indicator),
+    [indicators, indicator],
+  );
+
+  const yearMin = selectedIndicator?.yearMin ?? 1900;
+  const yearMax = selectedIndicator?.yearMax ?? 2100;
+  const yearDefault = selectedIndicator?.defaultYear ?? yearMax;
+  const yearLocked = yearMin === yearMax;
+
   useEffect(() => {
     let alive = true;
 
@@ -123,6 +133,31 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    if (!indicators.length) return;
+
+    const current = indicators.find((item) => item.slug === indicator);
+    const supported = indicators.filter((item) => item.supported);
+
+    if (!current || !current.supported) {
+      const fallback = supported[0];
+      if (fallback) {
+        setFilter({
+          indicator: fallback.slug,
+          year: fallback.defaultYear ?? year,
+        });
+      }
+    }
+  }, [indicators, indicator, setFilter, year]);
+
+  useEffect(() => {
+    if (!selectedIndicator) return;
+
+    if (year < yearMin || year > yearMax) {
+      setFilter({ year: yearDefault });
+    }
+  }, [selectedIndicator, year, yearMin, yearMax, yearDefault, setFilter]);
+
+  useEffect(() => {
     if (!regionCode) {
       setUfs(allUfs);
       return;
@@ -147,7 +182,7 @@ const App = () => {
         setMunicipalities(result);
       } catch (error) {
         if (!alive) return;
-        setErrorMessage(error instanceof Error ? error.message : 'Falha ao carregar municípios.');
+        setErrorMessage(error instanceof Error ? error.message : 'Falha ao carregar municipios.');
       }
     };
 
@@ -220,13 +255,7 @@ const App = () => {
   const filteredPoints = useMemo(() => {
     if (!dataPayload) return [];
 
-    let rows = filterByTerritorySelection(
-      dataPayload.items,
-      level,
-      regionCode,
-      ufCode,
-      allUfs,
-    );
+    let rows = filterByTerritorySelection(dataPayload.items, level, regionCode, ufCode, allUfs);
 
     if (search.trim()) {
       const normalizedSearch = search.trim().toLowerCase();
@@ -252,18 +281,27 @@ const App = () => {
           <label>Indicador</label>
           <select
             value={indicator}
-            onChange={(event) => setFilter({ indicator: event.target.value, municipalityCode: '' })}
+            onChange={(event) => {
+              const nextSlug = event.target.value;
+              const nextIndicator = indicators.find((item) => item.slug === nextSlug);
+              setFilter({
+                indicator: nextSlug,
+                municipalityCode: '',
+                year: nextIndicator?.defaultYear ?? year,
+              });
+            }}
           >
             {indicators.map((item) => (
               <option key={item.slug} value={item.slug} disabled={!item.supported}>
-                {item.label}{!item.supported ? ' (em breve)' : ''}
+                {item.label}
+                {!item.supported ? ' (em breve)' : ''}
               </option>
             ))}
           </select>
         </div>
 
         <div className="filter-group">
-          <label>Nível</label>
+          <label>Nivel</label>
           <select
             value={level}
             onChange={(event) =>
@@ -274,14 +312,14 @@ const App = () => {
               })
             }
           >
-            <option value="REGIAO">Região</option>
+            <option value="REGIAO">Regiao</option>
             <option value="UF">UF</option>
-            <option value="MUNICIPIO">Município</option>
+            <option value="MUNICIPIO">Municipio</option>
           </select>
         </div>
 
         <div className="filter-group">
-          <label>Região</label>
+          <label>Regiao</label>
           <select
             value={regionCode}
             onChange={(event) =>
@@ -303,10 +341,7 @@ const App = () => {
 
         <div className="filter-group">
           <label>UF</label>
-          <select
-            value={ufCode}
-            onChange={(event) => setFilter({ ufCode: event.target.value, municipalityCode: '' })}
-          >
+          <select value={ufCode} onChange={(event) => setFilter({ ufCode: event.target.value, municipalityCode: '' })}>
             <option value="">Todas</option>
             {ufs.map((item) => (
               <option key={item.code} value={item.code}>
@@ -317,7 +352,7 @@ const App = () => {
         </div>
 
         <div className="filter-group">
-          <label>Município</label>
+          <label>Municipio</label>
           <select
             value={municipalityCode}
             onChange={(event) => setFilter({ municipalityCode: event.target.value })}
@@ -333,13 +368,13 @@ const App = () => {
         </div>
 
         <div className="filter-group narrow">
-          <label>Ano (MVP)</label>
+          <label>Ano</label>
           <input
             type="number"
-            min={2022}
-            max={2022}
+            min={yearMin}
+            max={yearMax}
             value={year}
-            disabled
+            disabled={yearLocked}
             onChange={(event) => setFilter({ year: Number(event.target.value) })}
           />
         </div>
@@ -355,7 +390,7 @@ const App = () => {
         </div>
 
         <div className="filter-group">
-          <label>Visualização</label>
+          <label>Visualizacao</label>
           <select value={viewMode} onChange={(event) => setFilter({ viewMode: event.target.value as ViewMode })}>
             {modeOptions.map((mode) => (
               <option key={mode} value={mode}>
@@ -369,7 +404,7 @@ const App = () => {
       {errorMessage ? <div className="error-banner">{errorMessage}</div> : null}
       {loading ? <div className="loading-banner">Carregando dados...</div> : null}
       {level === 'MUNICIPIO' && !ufCode ? (
-        <div className="loading-banner">Selecione uma UF para carregar municípios.</div>
+        <div className="loading-banner">Selecione uma UF para carregar municipios.</div>
       ) : null}
 
       <main className="content">
@@ -396,4 +431,3 @@ const App = () => {
 };
 
 export default App;
-

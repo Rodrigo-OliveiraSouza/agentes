@@ -41,6 +41,12 @@ Plataforma full-stack 100% TypeScript para visualização territorial no Google 
 - População residente (Censo 2022):
   - agregado `10211`, variável `93`
   - `https://servicodados.ibge.gov.br/api/v3/agregados/10211/periodos/{ano}/variaveis/93?localidades=N3[all]&classificacao=1[6795]|2661[32776]`
+- PIB a preços correntes (2002-2023):
+  - agregado `5938`, variável `37`
+  - `https://servicodados.ibge.gov.br/api/v3/agregados/5938/periodos/{ano}/variaveis/37?localidades=N3[all]`
+- Área territorial e densidade demográfica (2010):
+  - agregado `1301`, variáveis `615` (área) e `616` (densidade)
+  - `https://servicodados.ibge.gov.br/api/v3/agregados/1301/periodos/2010/variaveis/615?localidades=N3[all]`
 
 ### Malhas / GeoJSON
 
@@ -67,10 +73,10 @@ Retorna territórios normalizados por nível.
 ### `GET /api/indicators`
 
 Retorna catálogo de indicadores:
-- Implementado: `population` (IBGE)
-- Planejados: `gdp`, `demographic_density`, `idh` (fonte alternativa plugável), `crime_rate` (fonte alternativa plugável)
+- Implementados: `population`, `gdp`, `demographic_density`, `territory_area` (IBGE)
+- Planejados/plugáveis: `idh`, `crime_rate`
 
-### `GET /api/data?indicator=population&level=...&code=...&year=...`
+### `GET /api/data?indicator=...&level=...&code=...&year=...`
 
 Retorna série territorial normalizada para o indicador.
 
@@ -205,12 +211,12 @@ npm run prisma:migrate
 
 ## Observações de MVP
 
-- Indicador implementado no MVP: **População residente**.
-- Demais indicadores entram via conectores plugáveis, mantendo o pipeline territorial do IBGE.
+- Indicadores já ativos no mapa: **População**, **PIB**, **Densidade demográfica** e **Área territorial**.
+- IDH e criminalidade permanecem como conectores plugáveis.
 
 ## Roadmap
 
-1. Conector de PIB e densidade demográfica via SIDRA.
+1. Expandir conectores com série histórica adicional (mais variáveis SIDRA/IBGE).
 2. Conector de IDH (PNUD) e criminalidade (SENASP/IPEA) como plugins.
 3. Pré-processamento de malhas em TopoJSON + simplificação adicional por zoom.
 4. Snapshot scheduler (Cron Worker) para atualizar datasets a cada X dias.

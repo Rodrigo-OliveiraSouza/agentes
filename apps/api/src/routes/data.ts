@@ -3,14 +3,14 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { cachedJson } from '../lib/cache';
 import { ApiError } from '../lib/errors';
-import { fetchPopulation } from '../lib/ibge';
-import type { AppBindings, TerritoryLevel } from '../lib/types';
+import { fetchIndicatorData, getIndicatorDefinition } from '../lib/ibge';
+import type { AppBindings, IndicatorSlug, TerritoryLevel } from '../lib/types';
 
 const querySchema = z.object({
-  indicator: z.enum(['population', 'gdp', 'idh', 'demographic_density', 'crime_rate']),
+  indicator: z.enum(['population', 'gdp', 'demographic_density', 'territory_area', 'idh', 'crime_rate']),
   level: z.enum(['REGIAO', 'UF', 'MUNICIPIO']).default('UF'),
   code: z.string().optional(),
-  year: z.coerce.number().int().min(2010).max(2030).default(2022),
+  year: z.coerce.number().int().min(1900).max(2100).optional(),
   search: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(20000).default(10000),
 });
@@ -18,32 +18,44 @@ const querySchema = z.object({
 export const dataRoute = new Hono<{ Bindings: AppBindings }>();
 
 dataRoute.get('/', zValidator('query', querySchema), async (c) => {
-  const { indicator, level, code, year, search, limit } = c.req.valid('query');
+  const { indicator, level, code, year: requestedYear, search, limit } = c.req.valid('query');
+  const indicatorSlug = indicator as IndicatorSlug;
+  const indicatorDefinition = getIndicatorDefinition(indicatorSlug);
 
-  if (indicator !== 'population') {
+  if (!indicatorDefinition) {
+    throw new ApiError(400, 'INVALID_INDICATOR', 'Indicador invalido.', { indicator });
+  }
+
+  if (!indicatorDefinition.supported) {
     throw new ApiError(
       501,
       'INDICATOR_NOT_IMPLEMENTED',
-      'No MVP apenas o indicador population está disponível via IBGE. Indicadores alternativos continuam plugáveis.',
-      { indicator },
+      'Indicador ainda nao implementado no MVP. Fonte alternativa continua plugavel.',
+      { indicator: indicatorSlug },
     );
   }
 
-  if (year !== 2022) {
-    throw new ApiError(
-      400,
-      'UNSUPPORTED_YEAR',
-      'No MVP, o indicador population está disponível apenas para o ano de 2022.',
-      { year },
-    );
+  const minYear = indicatorDefinition.yearMin ?? 1900;
+  const maxYear = indicatorDefinition.yearMax ?? 2100;
+  const defaultYear = indicatorDefinition.defaultYear ?? maxYear;
+  const effectiveYear = requestedYear ?? defaultYear;
+
+  if (effectiveYear < minYear || effectiveYear > maxYear) {
+    throw new ApiError(400, 'UNSUPPORTED_YEAR', `Ano fora da faixa suportada para ${indicatorSlug}.`, {
+      indicator: indicatorSlug,
+      requestedYear: effectiveYear,
+      yearMin: minYear,
+      yearMax: maxYear,
+      defaultYear,
+    });
   }
 
   return cachedJson(
     c,
     'data',
-    { indicator, level, code, year, search, limit },
+    { indicator: indicatorSlug, level, code, year: effectiveYear, search, limit },
     async () => {
-      const points = await fetchPopulation(level as TerritoryLevel, year, code);
+      const points = await fetchIndicatorData(indicatorSlug, level as TerritoryLevel, effectiveYear, code);
       const normalizedSearch = search?.trim().toLowerCase();
       const filtered = normalizedSearch
         ? points.filter((point) => point.name.toLowerCase().includes(normalizedSearch))
@@ -57,10 +69,10 @@ dataRoute.get('/', zValidator('query', querySchema), async (c) => {
       const max = filtered.length ? Math.max(...filtered.map((row) => row.value)) : 0;
 
       return {
-        indicator,
+        indicator: indicatorSlug,
         level,
         code: code ?? null,
-        year,
+        year: effectiveYear,
         count: filtered.length,
         stats: {
           min,
@@ -74,4 +86,3 @@ dataRoute.get('/', zValidator('query', querySchema), async (c) => {
     1800,
   );
 });
-

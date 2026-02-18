@@ -1,6 +1,12 @@
 export type TerritoryLevel = 'REGIAO' | 'UF' | 'MUNICIPIO';
 
-export type IndicatorSlug = 'population' | 'gdp' | 'idh' | 'demographic_density' | 'crime_rate';
+export type IndicatorSlug =
+  | 'population'
+  | 'gdp'
+  | 'demographic_density'
+  | 'territory_area'
+  | 'idh'
+  | 'crime_rate';
 
 export type AppBindings = {
   DATABASE_URL?: string;
@@ -23,6 +29,9 @@ export type IndicatorDefinition = {
   unit: string;
   source: string;
   supported: boolean;
+  yearMin?: number;
+  yearMax?: number;
+  defaultYear?: number;
   notes?: string;
 };
 

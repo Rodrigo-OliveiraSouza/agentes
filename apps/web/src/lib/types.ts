@@ -16,6 +16,9 @@ export type IndicatorDefinition = {
   unit: string;
   source: string;
   supported: boolean;
+  yearMin?: number;
+  yearMax?: number;
+  defaultYear?: number;
   notes?: string;
 };
 

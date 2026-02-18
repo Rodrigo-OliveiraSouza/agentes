@@ -1,5 +1,5 @@
 import { ApiError } from './errors';
-import type { IndicatorDefinition, IndicatorPoint, TerritoryItem, TerritoryLevel } from './types';
+import type { IndicatorDefinition, IndicatorPoint, IndicatorSlug, TerritoryItem, TerritoryLevel } from './types';
 
 const LOCALIDADES_BASE = 'https://servicodados.ibge.gov.br/api/v1/localidades';
 const AGREGADOS_BASE = 'https://servicodados.ibge.gov.br/api/v3/agregados';
@@ -9,46 +9,77 @@ const POPULATION_AGGREGATE = '10211';
 const POPULATION_VARIABLE = '93';
 const POPULATION_CLASSIFICATIONS = 'classificacao=1[6795]|2661[32776]';
 
+const GDP_AGGREGATE = '5938';
+const GDP_VARIABLE = '37';
+
+const TERRITORY_AGGREGATE = '1301';
+const TERRITORY_AREA_VARIABLE = '615';
+const DEMOGRAPHIC_DENSITY_VARIABLE = '616';
+
 export const INDICATORS: IndicatorDefinition[] = [
   {
     slug: 'population',
-    label: 'População residente',
+    label: 'Populacao residente',
     unit: 'pessoas',
-    source: 'IBGE - Censo Demográfico (agregado 10211, variável 93)',
+    source: 'IBGE Censo Demografico (agregado 10211, variavel 93)',
     supported: true,
+    yearMin: 2022,
+    yearMax: 2022,
+    defaultYear: 2022,
   },
   {
     slug: 'gdp',
-    label: 'PIB (planejado)',
-    unit: 'R$ milhões',
-    source: 'IBGE/SIDRA',
-    supported: false,
-    notes: 'Conector previsto para próxima sprint.',
+    label: 'PIB a precos correntes',
+    unit: 'mil reais',
+    source: 'IBGE PIB dos Municipios (agregado 5938, variavel 37)',
+    supported: true,
+    yearMin: 2002,
+    yearMax: 2023,
+    defaultYear: 2023,
+  },
+  {
+    slug: 'demographic_density',
+    label: 'Densidade demografica',
+    unit: 'hab/km2',
+    source: 'IBGE Censo Demografico (agregado 1301, variavel 616)',
+    supported: true,
+    yearMin: 2010,
+    yearMax: 2010,
+    defaultYear: 2010,
+  },
+  {
+    slug: 'territory_area',
+    label: 'Area territorial',
+    unit: 'km2',
+    source: 'IBGE Censo Demografico (agregado 1301, variavel 615)',
+    supported: true,
+    yearMin: 2010,
+    yearMax: 2010,
+    defaultYear: 2010,
   },
   {
     slug: 'idh',
     label: 'IDH (alternativo)',
-    unit: 'índice',
+    unit: 'indice',
     source: 'PNUD Atlas Brasil',
     supported: false,
-    notes: 'Fonte plugável fora do IBGE.',
-  },
-  {
-    slug: 'demographic_density',
-    label: 'Densidade demográfica (planejado)',
-    unit: 'hab/km²',
-    source: 'IBGE',
-    supported: false,
+    notes: 'Conector plugavel fora do IBGE.',
   },
   {
     slug: 'crime_rate',
     label: 'Taxa de criminalidade (alternativo)',
-    unit: 'ocorrências/100 mil',
-    source: 'SENASP / Atlas da Violência / Secretarias Estaduais',
+    unit: 'ocorrencias/100 mil',
+    source: 'SENASP / Atlas da Violencia / Secretarias Estaduais',
     supported: false,
-    notes: 'Plugin externo mantendo o IBGE como backbone territorial.',
+    notes: 'Conector plugavel fora do IBGE.',
   },
 ];
+
+export const INDICATOR_SLUGS = INDICATORS.map((item) => item.slug) as IndicatorSlug[];
+
+export const getIndicatorDefinition = (slug: IndicatorSlug): IndicatorDefinition | undefined => {
+  return INDICATORS.find((item) => item.slug === slug);
+};
 
 const fetchJson = async <T>(url: string): Promise<T> => {
   const response = await fetch(url, {
@@ -67,7 +98,7 @@ const fetchJson = async <T>(url: string): Promise<T> => {
 const normalizeMunicipioParent = (item: Record<string, unknown>): string | null => {
   const immediate = item['regiao-imediata'] as Record<string, unknown> | undefined;
   const intermediate = immediate?.['regiao-intermediaria'] as Record<string, unknown> | undefined;
-  const ufFromNew = intermediate?.['UF'] as Record<string, unknown> | undefined;
+  const ufFromNew = intermediate?.UF as Record<string, unknown> | undefined;
 
   if (ufFromNew?.id) {
     return String(ufFromNew.id);
@@ -98,7 +129,7 @@ export const fetchTerritories = async (level: TerritoryLevel, parentCode?: strin
       url = parentCode ? `${LOCALIDADES_BASE}/estados/${parentCode}/municipios` : `${LOCALIDADES_BASE}/municipios`;
       break;
     default:
-      throw new ApiError(400, 'INVALID_LEVEL', 'Nível territorial inválido.');
+      throw new ApiError(400, 'INVALID_LEVEL', 'Nivel territorial invalido.');
   }
 
   const payload = await fetchJson<Array<Record<string, unknown>>>(url);
@@ -150,13 +181,34 @@ const levelToLocalidade = (level: TerritoryLevel, code?: string): string => {
   return code.length <= 2 ? 'N6[all]' : `N6[${code}]`;
 };
 
-export const fetchPopulation = async (
-  level: TerritoryLevel,
-  year: number,
-  code?: string,
-): Promise<IndicatorPoint[]> => {
+type FetchAggregateParams = {
+  level: TerritoryLevel;
+  year: number;
+  code?: string;
+  aggregateId: string;
+  variableId: string;
+  classificationQuery?: string;
+};
+
+const toNumericValue = (raw: string): number => {
+  const normalized = String(raw ?? '')
+    .replace(/\./g, '')
+    .replace(',', '.')
+    .replace(/[^0-9.-]/g, '');
+  return Number(normalized);
+};
+
+const fetchAggregateSeries = async ({
+  level,
+  year,
+  code,
+  aggregateId,
+  variableId,
+  classificationQuery,
+}: FetchAggregateParams): Promise<IndicatorPoint[]> => {
   const localidade = levelToLocalidade(level, code);
-  const url = `${AGREGADOS_BASE}/${POPULATION_AGGREGATE}/periodos/${year}/variaveis/${POPULATION_VARIABLE}?localidades=${localidade}&${POPULATION_CLASSIFICATIONS}`;
+  const classificationPart = classificationQuery ? `&${classificationQuery}` : '';
+  const url = `${AGREGADOS_BASE}/${aggregateId}/periodos/${year}/variaveis/${variableId}?localidades=${localidade}${classificationPart}`;
 
   type AggregadosResponse = Array<{
     resultados: Array<{
@@ -181,7 +233,7 @@ export const fetchPopulation = async (
         name: row.localidade.nome,
         level,
         year,
-        value: Number(rawValue),
+        value: toNumericValue(rawValue),
       } satisfies IndicatorPoint;
     })
     .filter((row) => Number.isFinite(row.value));
@@ -191,6 +243,56 @@ export const fetchPopulation = async (
   }
 
   return parsed;
+};
+
+export const fetchIndicatorData = async (
+  indicator: IndicatorSlug,
+  level: TerritoryLevel,
+  year: number,
+  code?: string,
+): Promise<IndicatorPoint[]> => {
+  switch (indicator) {
+    case 'population':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: POPULATION_AGGREGATE,
+        variableId: POPULATION_VARIABLE,
+        classificationQuery: POPULATION_CLASSIFICATIONS,
+      });
+    case 'gdp':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: GDP_AGGREGATE,
+        variableId: GDP_VARIABLE,
+      });
+    case 'demographic_density':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: TERRITORY_AGGREGATE,
+        variableId: DEMOGRAPHIC_DENSITY_VARIABLE,
+      });
+    case 'territory_area':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: TERRITORY_AGGREGATE,
+        variableId: TERRITORY_AREA_VARIABLE,
+      });
+    default:
+      throw new ApiError(
+        501,
+        'INDICATOR_NOT_IMPLEMENTED',
+        'Indicador ainda nao implementado no MVP. Fonte alternativa segue plugavel.',
+        { indicator },
+      );
+  }
 };
 
 export const fetchGeoJson = async (
@@ -248,4 +350,3 @@ export const fetchGeoJson = async (
     })),
   };
 };
-

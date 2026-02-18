@@ -8,7 +8,7 @@ import type {
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-const CACHE_PREFIX = 'ibge-map-cache-v2';
+const CACHE_PREFIX = 'ibge-map-cache-v3';
 
 type RequestParams = Record<string, string | number | boolean | undefined>;
 

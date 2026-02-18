@@ -138,16 +138,13 @@ const App = () => {
     if (!indicators.length) return;
 
     const current = indicators.find((item) => item.slug === indicator);
-    const supported = indicators.filter((item) => item.supported);
-
-    if (!current || !current.supported) {
-      const fallback = supported[0];
-      if (fallback) {
-        setFilter({
-          indicator: fallback.slug,
-          year: fallback.defaultYear ?? year,
-        });
-      }
+    if (!current) {
+      const fallback = indicators[0];
+      if (!fallback) return;
+      setFilter({
+        indicator: fallback.slug,
+        year: fallback.defaultYear ?? year,
+      });
     }
   }, [indicators, indicator, setFilter, year]);
 
@@ -217,6 +214,35 @@ const App = () => {
           ? ufCode || undefined
           : undefined;
 
+    if (selectedIndicator && !selectedIndicator.supported) {
+      const loadGeoOnly = async () => {
+        try {
+          const geojson = await api.geojson({
+            level,
+            code: geojsonCode,
+            simplified: true,
+          });
+
+          if (!alive) return;
+          setGeojsonPayload(geojson);
+          setDataPayload(null);
+          setErrorMessage(`Indicador "${selectedIndicator.label}" em desenvolvimento.`);
+        } catch (error) {
+          if (!alive) return;
+          setErrorMessage(error instanceof Error ? error.message : 'Falha ao carregar dados do mapa.');
+        } finally {
+          if (alive) {
+            setLoading(false);
+          }
+        }
+      };
+
+      loadGeoOnly();
+      return () => {
+        alive = false;
+      };
+    }
+
     const loadMapData = async () => {
       try {
         const [geojson, data] = await Promise.all([
@@ -252,7 +278,7 @@ const App = () => {
     return () => {
       alive = false;
     };
-  }, [indicator, level, year, regionCode, ufCode, municipalityCode]);
+  }, [indicator, level, year, regionCode, ufCode, municipalityCode, selectedIndicator]);
 
   const filteredPoints = useMemo(() => {
     if (!dataPayload) return [];
@@ -304,7 +330,7 @@ const App = () => {
               }}
             >
               {indicators.map((item) => (
-                <option key={item.slug} value={item.slug} disabled={!item.supported}>
+                <option key={item.slug} value={item.slug}>
                   {item.label}
                   {!item.supported ? ' (em breve)' : ''}
                 </option>

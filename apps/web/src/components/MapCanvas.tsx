@@ -37,6 +37,15 @@ const mapOptions: google.maps.MapOptions = {
   streetViewControl: false,
   fullscreenControl: true,
   gestureHandling: 'greedy',
+  restriction: {
+    latLngBounds: {
+      north: 6.5,
+      south: -35.5,
+      west: -75.5,
+      east: -31.0,
+    },
+    strictBounds: false,
+  },
 };
 
 const clamp = (value: number, min: number, max: number): number => {

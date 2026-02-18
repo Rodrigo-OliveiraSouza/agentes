@@ -38,10 +38,62 @@ const WATER_NETWORK_CLASSIFICATIONS = 'classificacao=61[10970]';
 const GARBAGE_COLLECTION_CLASSIFICATIONS = 'classificacao=67[2520]';
 const ELECTRICITY_ACCESS_CLASSIFICATIONS = 'classificacao=309[3011]';
 
-const CRIME_PROXY_AGGREGATE = '899';
-const HOMICIDE_RATE_VARIABLE = '2150';
-const TRAFFIC_RATE_VARIABLE = '2151';
-const CRIME_CLASSIFICATIONS = 'classificacao=2[6794]';
+const SCHOOL_ATTENDANCE_AGGREGATE = '10056';
+const SCHOOL_ATTENDANCE_VARIABLE = '3795';
+const SCHOOL_ATTENDANCE_CLASSIFICATIONS = 'classificacao=58[95253]|2[6794]|86[95251]';
+
+const HIGHER_EDUCATION_AGGREGATE = '10061';
+const HIGHER_EDUCATION_VARIABLE = '1002667';
+const HIGHER_EDUCATION_CLASSIFICATIONS = 'classificacao=1568[99713]|58[95253]|2[6794]|86[95251]';
+
+const INTERNET_ACCESS_AGGREGATE = '10201';
+const INTERNET_ACCESS_VARIABLE = '1013436';
+const INTERNET_ACCESS_CLASSIFICATIONS = 'classificacao=2072[77585]|133[95278]';
+
+const GINI_AGGREGATE = '10301';
+const GINI_VARIABLE = '13418';
+
+const EXTREME_POVERTY_AGGREGATE = '5877';
+const EXTREME_POVERTY_VARIABLE = '9948';
+
+const UNEMPLOYMENT_AGGREGATE = '9694';
+const UNEMPLOYMENT_VARIABLE = '10004';
+const UNEMPLOYMENT_CLASSIFICATIONS = 'classificacao=2[6794]';
+
+const INFANT_MORTALITY_AGGREGATE = '3834';
+const INFANT_MORTALITY_VARIABLE = '1940';
+
+const LIFE_EXPECTANCY_AGGREGATE = '1174';
+const LIFE_EXPECTANCY_VARIABLE = '2503';
+
+const PRENATAL_AGGREGATE = '5811';
+const PRENATAL_VARIABLE = '6639';
+const PRENATAL_CLASSIFICATIONS = 'classificacao=86[95251]|1[6795]';
+
+const PRIMARY_CARE_AGGREGATE = '7631';
+const PRIMARY_CARE_VARIABLE = '10954';
+const PRIMARY_CARE_CLASSIFICATIONS = 'classificacao=416[10244]';
+
+const HOMICIDE_AGGREGATE = '6606';
+const HOMICIDE_RATE_VARIABLE = '13532';
+
+const TRAFFIC_MORTALITY_AGGREGATE = '4408';
+const TRAFFIC_MORTALITY_VARIABLE = '9734';
+const TRAFFIC_MORTALITY_CLASSIFICATIONS = 'classificacao=2[6794]|58[95253]';
+
+const ROBBERY_AGGREGATE = '8502';
+const ROBBERY_COUNT_VARIABLE = '12452';
+const ROBBERY_CLASSIFICATIONS = 'classificacao=1351[57304]';
+
+const ROBBERY_HOUSEHOLD_AGGREGATE = '8512';
+const ROBBERY_HOUSEHOLD_COUNT_VARIABLE = '12462';
+const ROBBERY_HOUSEHOLD_CLASSIFICATIONS = 'classificacao=1351[57304]';
+
+const AGING_INDEX_AGGREGATE = '9515';
+const AGING_INDEX_VARIABLE = '10612';
+
+const FERTILITY_AGGREGATE = '3727';
+const FERTILITY_VARIABLE = '2493';
 
 const SOURCE_URLS = {
   ibge: 'https://servicodados.ibge.gov.br/api/docs/',
@@ -129,109 +181,156 @@ export const INDICATORS: IndicatorDefinition[] = [
   },
   {
     slug: 'idh',
-    label: 'IDH (Atlas Brasil/PNUD)',
+    label: 'IDH aproximado (proxy IBGE)',
     unit: 'indice',
-    source: 'PNUD Atlas Brasil',
-    sourceLabel: 'Atlas Brasil (PNUD)',
-    sourceUrl: 'https://www.atlasbrasil.org.br/',
-    supported: false,
-    notes: 'Conector plugavel fora do IBGE.',
+    source: 'Composto proxy com taxa de alfabetizacao, renda per capita e expectativa de vida (IBGE), inspirado na estrutura do IDH',
+    sourceLabel: 'IBGE API (proxy composto)',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2022,
+    yearMax: 2022,
+    defaultYear: 2022,
+    notes: 'Valor aproximado para leitura territorial rapida. IDH oficial segue no Atlas Brasil/PNUD.',
   },
   {
     slug: 'crime_rate',
-    label: 'Criminalidade (SINESP)',
+    label: 'Taxa de criminalidade (proxy roubos)',
     unit: 'ocorrencias/100 mil',
-    source: 'SINESP/SENASP com catalogo via gov.br Conecta e datasets do dados.gov.br',
-    sourceLabel: 'SINESP (dados.gov.br / gov.br Conecta)',
-    sourceUrl: SOURCE_URLS.govbrConecta,
-    supported: false,
-    notes: `Conector plugavel externo. Origem alternativa direta: ${SOURCE_URLS.dadosGovBr}.`,
+    source: 'IBGE PNAD (agregado 8502, vitimas de roubo) normalizado por populacao; conector SINESP permanece plugavel',
+    sourceLabel: 'IBGE API + SINESP (plugavel)',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2021,
+    yearMax: 2021,
+    defaultYear: 2021,
+    notes: `Referencia complementar SINESP/SENASP via ${SOURCE_URLS.govbrConecta}.`,
   },
   {
     slug: 'income_per_capita',
-    label: 'Renda per capita (DataViva)',
+    label: 'Renda per capita (derivada)',
     unit: 'reais',
-    source: 'DataViva + bases socioeconomicas oficiais',
-    sourceLabel: 'DataViva',
-    sourceUrl: SOURCE_URLS.dataViva,
-    supported: false,
-    notes: 'Conector planejado para agregados socioeconomicos.',
+    source: 'Derivada de PIB municipal (agregado 5938) e populacao residente (agregado 10211)',
+    sourceLabel: 'IBGE API (derivada)',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2023,
+    yearMax: 2023,
+    defaultYear: 2023,
+    notes: 'Calculo: (PIB em mil reais * 1000) / populacao.',
   },
   {
     slug: 'unemployment_rate',
-    label: 'Taxa de desocupacao (DataViva)',
+    label: 'Taxa de desocupacao (IBGE)',
     unit: '%',
-    source: 'DataViva + PNAD/IBGE',
-    sourceLabel: 'DataViva',
-    sourceUrl: SOURCE_URLS.dataViva,
-    supported: false,
-    notes: 'Conector planejado para mercado de trabalho.',
+    source: 'IBGE ODS (agregado 9694, variavel 10004)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2012,
+    yearMax: 2024,
+    defaultYear: 2024,
   },
   {
     slug: 'gini_index',
-    label: 'Indice de Gini (DataViva)',
+    label: 'Indice de Gini (IBGE)',
     unit: 'indice',
-    source: 'DataViva + IBGE/SIDRA',
-    sourceLabel: 'DataViva',
-    sourceUrl: SOURCE_URLS.dataViva,
-    supported: false,
-    notes: 'Conector planejado para desigualdade de renda.',
+    source: 'IBGE Censo Demografico (agregado 10301, variavel 13418)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2022,
+    yearMax: 2022,
+    defaultYear: 2022,
+    notes: 'Disponibilidade territorial na API: Brasil, regiao e UF.',
   },
   {
     slug: 'extreme_poverty_rate',
     label: 'Taxa de extrema pobreza',
     unit: '%',
-    source: 'IBGE/SIDRA (planejado)',
-    supported: false,
-    notes: 'Conector planejado para vulnerabilidade social.',
+    source: 'IBGE ODS (agregado 5877, variavel 9948)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2012,
+    yearMax: 2024,
+    defaultYear: 2024,
+    notes: 'Disponibilidade territorial na API: Brasil, regiao e UF.',
   },
   {
     slug: 'school_attendance_rate',
-    label: 'Taxa de frequencia escolar',
+    label: 'Taxa de frequencia escolar (IBGE)',
     unit: '%',
-    source: 'IBGE Censo/SIDRA (planejado)',
-    supported: false,
-    notes: 'Conector planejado para educacao basica.',
+    source: 'IBGE Censo Demografico (agregado 10056, variavel 3795)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2022,
+    yearMax: 2022,
+    defaultYear: 2022,
   },
   {
     slug: 'higher_education_rate',
-    label: 'Ensino superior completo',
+    label: 'Ensino superior completo (IBGE)',
     unit: '%',
-    source: 'IBGE Censo/SIDRA (planejado)',
-    supported: false,
-    notes: 'Conector planejado para educacao superior.',
+    source: 'IBGE Censo Demografico (agregado 10061, variavel 1002667, classificacao superior completo)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2022,
+    yearMax: 2022,
+    defaultYear: 2022,
   },
   {
     slug: 'infant_mortality_rate',
-    label: 'Mortalidade infantil',
+    label: 'Mortalidade infantil (IBGE)',
     unit: 'obitos por mil nascidos vivos',
-    source: 'IBGE/MinSaude (planejado)',
-    supported: false,
-    notes: 'Conector planejado com fonte oficial de saude publica.',
+    source: 'IBGE IDS (agregado 3834, variavel 1940)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2000,
+    yearMax: 2016,
+    defaultYear: 2016,
+    notes: 'Disponibilidade territorial na API: Brasil, regiao e UF.',
   },
   {
     slug: 'life_expectancy',
-    label: 'Expectativa de vida',
+    label: 'Expectativa de vida (IBGE)',
     unit: 'anos',
-    source: 'IBGE (planejado)',
-    supported: false,
-    notes: 'Conector planejado para indicadores de longevidade.',
+    source: 'IBGE IDS (agregado 1174, variavel 2503)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2000,
+    yearMax: 2014,
+    defaultYear: 2014,
+    notes: 'Disponibilidade territorial na API: Brasil, regiao e UF.',
   },
   {
     slug: 'prenatal_coverage',
-    label: 'Cobertura de pre-natal adequado',
+    label: 'Cobertura de pre-natal (IBGE)',
     unit: '%',
-    source: 'DataSUS/IBGE (planejado)',
-    supported: false,
-    notes: 'Conector planejado para saude materna.',
+    source: 'IBGE PNS (agregado 5811, variavel 6639)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2013,
+    yearMax: 2013,
+    defaultYear: 2013,
+    notes: 'Disponibilidade territorial na API: Brasil e regiao.',
   },
   {
     slug: 'primary_care_coverage',
-    label: 'Cobertura de atencao primaria',
+    label: 'Cobertura de atencao primaria (IBGE)',
     unit: '%',
-    source: 'DataSUS e fontes oficiais (planejado)',
-    supported: false,
-    notes: 'Conector planejado para atencao basica.',
+    source: 'IBGE PNS (agregado 7631, variavel 10954, cadastrados em unidade de saude da familia)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2019,
+    yearMax: 2019,
+    defaultYear: 2019,
+    notes: 'Disponibilidade territorial na API: Brasil e regiao.',
   },
   {
     slug: 'water_network_coverage',
@@ -259,11 +358,15 @@ export const INDICATORS: IndicatorDefinition[] = [
   },
   {
     slug: 'internet_access_rate',
-    label: 'Domicilios com acesso a internet',
+    label: 'Domicilios com acesso a internet (IBGE)',
     unit: '%',
-    source: 'IBGE TIC/PNAD (planejado)',
-    supported: false,
-    notes: 'Conector planejado para inclusao digital.',
+    source: 'IBGE Censo Demografico (agregado 10201, variavel 1013436, conexao domiciliar = sim)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2022,
+    yearMax: 2022,
+    defaultYear: 2022,
   },
   {
     slug: 'electricity_access_rate',
@@ -279,47 +382,67 @@ export const INDICATORS: IndicatorDefinition[] = [
   },
   {
     slug: 'homicide_rate',
-    label: 'Homicidios (Atlas da Violencia)',
+    label: 'Homicidios (IBGE ODS)',
     unit: 'obitos/100 mil',
-    source: 'Atlas da Violencia (IPEA/FBSP)',
-    sourceLabel: 'Atlas da Violencia (IPEA)',
-    sourceUrl: SOURCE_URLS.atlasViolencia,
-    supported: false,
-    notes: 'Conector plugavel externo.',
+    source: 'IBGE ODS (agregado 6606, variavel 13532)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2000,
+    yearMax: 2023,
+    defaultYear: 2023,
+    notes: 'Disponibilidade territorial na API: Brasil, regiao e UF.',
   },
   {
     slug: 'robbery_rate',
-    label: 'Roubos (Portais Estaduais)',
+    label: 'Roubos (proxy domicilios vitimizados)',
     unit: 'ocorrencias/100 mil',
-    source: 'Portais estaduais de dados abertos (ex.: SP) e API comunitaria de seguranca publica',
-    sourceLabel: 'Portais estaduais + API de terceiros',
-    sourceUrl: SOURCE_URLS.dadosAbertosSP,
-    supported: false,
-    notes: `Conector plugavel externo. Alternativa tecnica: ${SOURCE_URLS.apiSegurancaTerceiros}.`,
+    source: 'IBGE PNAD (agregado 8512, domicilios com vitima de roubo) normalizado por populacao',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2021,
+    yearMax: 2021,
+    defaultYear: 2021,
+    notes: `Conector oficial estadual/SINESP segue opcional via ${SOURCE_URLS.dadosGovBr}.`,
   },
   {
     slug: 'traffic_mortality_rate',
-    label: 'Mortalidade no transito',
+    label: 'Mortalidade no transito (IBGE ODS)',
     unit: 'obitos/100 mil',
-    source: 'IBGE/SIM (planejado)',
-    supported: false,
-    notes: 'Conector planejado para seguranca viaria.',
+    source: 'IBGE ODS (agregado 4408, variavel 9734)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2000,
+    yearMax: 2023,
+    defaultYear: 2023,
+    notes: 'Disponibilidade territorial na API: Brasil, regiao e UF.',
   },
   {
     slug: 'aging_index',
-    label: 'Indice de envelhecimento',
+    label: 'Indice de envelhecimento (IBGE)',
     unit: 'indice',
-    source: 'IBGE Censo (planejado)',
-    supported: false,
-    notes: 'Conector planejado para estrutura etaria.',
+    source: 'IBGE Censo Demografico (agregado 9515, variavel 10612)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2022,
+    yearMax: 2022,
+    defaultYear: 2022,
   },
   {
     slug: 'fertility_rate',
-    label: 'Taxa de fecundidade',
+    label: 'Taxa de fecundidade (IBGE)',
     unit: 'filhos por mulher',
-    source: 'IBGE Censo (planejado)',
-    supported: false,
-    notes: 'Conector planejado para dinamica demografica.',
+    source: 'IBGE IDS (agregado 3727, variavel 2493)',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2000,
+    yearMax: 2016,
+    defaultYear: 2016,
+    notes: 'Disponibilidade territorial na API: Brasil, regiao e UF.',
   },
 ];
 
@@ -507,6 +630,292 @@ const fetchAggregateSeries = async ({
   return parsed;
 };
 
+const clampNumeric = (value: number, min: number, max: number): number => {
+  return Math.min(max, Math.max(min, value));
+};
+
+const getMunicipalityScope = async (code?: string): Promise<TerritoryItem[]> => {
+  if (code && code.length >= 2) {
+    const ufCode = code.slice(0, 2);
+    const fromUf = await fetchTerritories('MUNICIPIO', ufCode);
+    if (code.length === 7) {
+      return fromUf.filter((item) => item.code === code);
+    }
+    return fromUf;
+  }
+
+  return fetchTerritories('MUNICIPIO');
+};
+
+const expandUfPointsToMunicipios = async (
+  ufPoints: IndicatorPoint[],
+  year: number,
+  code?: string,
+): Promise<IndicatorPoint[]> => {
+  const ufMap = new Map(ufPoints.map((item) => [item.code, item]));
+  const municipios = await getMunicipalityScope(code);
+
+  return municipios
+    .map((municipio) => {
+      const ufCode = municipio.parentCode ?? municipio.code.slice(0, 2);
+      const ufRow = ufMap.get(ufCode);
+      if (!ufRow) return null;
+
+      return {
+        code: municipio.code,
+        name: municipio.name,
+        level: 'MUNICIPIO',
+        year,
+        value: ufRow.value,
+      } satisfies IndicatorPoint;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+};
+
+const expandRegiaoPointsToUfs = async (
+  regiaoPoints: IndicatorPoint[],
+  year: number,
+  code?: string,
+): Promise<IndicatorPoint[]> => {
+  const regiaoMap = new Map(regiaoPoints.map((item) => [item.code, item]));
+  const ufs = await fetchTerritories('UF');
+
+  return ufs
+    .filter((uf) => {
+      if (!code) return true;
+      if (code.length === 1) return uf.parentCode === code;
+      if (code.length === 2) return uf.code === code;
+      return true;
+    })
+    .map((uf) => {
+      const regiaoCode = uf.parentCode ?? '';
+      const regiaoRow = regiaoMap.get(regiaoCode);
+      if (!regiaoRow) return null;
+
+      return {
+        code: uf.code,
+        name: uf.name,
+        level: 'UF',
+        year,
+        value: regiaoRow.value,
+      } satisfies IndicatorPoint;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+};
+
+const expandRegiaoPointsToMunicipios = async (
+  regiaoPoints: IndicatorPoint[],
+  year: number,
+  code?: string,
+): Promise<IndicatorPoint[]> => {
+  const regiaoMap = new Map(regiaoPoints.map((item) => [item.code, item]));
+  const ufs = await fetchTerritories('UF');
+  const ufToRegiao = new Map(ufs.map((uf) => [uf.code, uf.parentCode ?? '']));
+  const municipios = await getMunicipalityScope(code);
+
+  return municipios
+    .map((municipio) => {
+      const ufCode = municipio.parentCode ?? municipio.code.slice(0, 2);
+      const regiaoCode = ufToRegiao.get(ufCode);
+      if (!regiaoCode) return null;
+
+      const regiaoRow = regiaoMap.get(regiaoCode);
+      if (!regiaoRow) return null;
+
+      return {
+        code: municipio.code,
+        name: municipio.name,
+        level: 'MUNICIPIO',
+        year,
+        value: regiaoRow.value,
+      } satisfies IndicatorPoint;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+};
+
+const fetchUfNativeWithMunicipioExpansion = async (
+  level: TerritoryLevel,
+  year: number,
+  code: string | undefined,
+  aggregateId: string,
+  variableId: string,
+  classificationQuery?: string,
+): Promise<IndicatorPoint[]> => {
+  if (level !== 'MUNICIPIO') {
+    return fetchAggregateSeries({ level, year, code, aggregateId, variableId, classificationQuery });
+  }
+
+  const ufCode = code && code.length >= 2 ? code.slice(0, 2) : undefined;
+  const ufPoints = await fetchAggregateSeries({
+    level: 'UF',
+    year,
+    code: ufCode,
+    aggregateId,
+    variableId,
+    classificationQuery,
+  });
+
+  return expandUfPointsToMunicipios(ufPoints, year, code);
+};
+
+const fetchRegiaoNativeWithExpansion = async (
+  level: TerritoryLevel,
+  year: number,
+  code: string | undefined,
+  aggregateId: string,
+  variableId: string,
+  classificationQuery?: string,
+): Promise<IndicatorPoint[]> => {
+  const regiaoPoints = await fetchAggregateSeries({
+    level: 'REGIAO',
+    year,
+    aggregateId,
+    variableId,
+    classificationQuery,
+  });
+
+  if (level === 'REGIAO') {
+    if (!code || code.length !== 1) return regiaoPoints;
+    return regiaoPoints.filter((row) => row.code === code);
+  }
+
+  if (level === 'UF') {
+    return expandRegiaoPointsToUfs(regiaoPoints, year, code);
+  }
+
+  return expandRegiaoPointsToMunicipios(regiaoPoints, year, code);
+};
+
+const normalizeCountByPopulation = async (
+  countPoints: IndicatorPoint[],
+  level: TerritoryLevel,
+  code: string | undefined,
+  populationYear = 2022,
+): Promise<IndicatorPoint[]> => {
+  const populationPoints = await fetchAggregateSeries({
+    level,
+    year: populationYear,
+    code,
+    aggregateId: POPULATION_AGGREGATE,
+    variableId: POPULATION_VARIABLE,
+    classificationQuery: POPULATION_CLASSIFICATIONS,
+  });
+
+  const populationMap = new Map(populationPoints.map((item) => [item.code, item.value]));
+
+  return countPoints
+    .map((item) => {
+      const population = populationMap.get(item.code);
+      if (!population || population <= 0) return null;
+
+      return {
+        ...item,
+        value: (item.value / population) * 100_000,
+      } satisfies IndicatorPoint;
+    })
+    .filter((item): item is IndicatorPoint => item !== null);
+};
+
+const fetchIncomePerCapitaDerived = async (
+  level: TerritoryLevel,
+  code: string | undefined,
+): Promise<IndicatorPoint[]> => {
+  const [gdpRows, populationRows] = await Promise.all([
+    fetchAggregateSeries({
+      level,
+      year: 2023,
+      code,
+      aggregateId: GDP_AGGREGATE,
+      variableId: GDP_VARIABLE,
+    }),
+    fetchAggregateSeries({
+      level,
+      year: 2022,
+      code,
+      aggregateId: POPULATION_AGGREGATE,
+      variableId: POPULATION_VARIABLE,
+      classificationQuery: POPULATION_CLASSIFICATIONS,
+    }),
+  ]);
+
+  const popMap = new Map(populationRows.map((item) => [item.code, item.value]));
+
+  return gdpRows
+    .map((item) => {
+      const population = popMap.get(item.code);
+      if (!population || population <= 0) return null;
+
+      return {
+        code: item.code,
+        name: item.name,
+        level: item.level,
+        year: 2023,
+        value: (item.value * 1000) / population,
+      } satisfies IndicatorPoint;
+    })
+    .filter((item): item is IndicatorPoint => item !== null);
+};
+
+const fetchIdhProxy = async (level: TerritoryLevel, code?: string): Promise<IndicatorPoint[]> => {
+  const [literacyRows, incomeRows, lifeRows] = await Promise.all([
+    fetchAggregateSeries({
+      level,
+      year: 2010,
+      code,
+      aggregateId: LITERACY_AGGREGATE,
+      variableId: LITERACY_RATE_VARIABLE,
+      classificationQuery: LITERACY_CLASSIFICATIONS,
+    }),
+    fetchIncomePerCapitaDerived(level, code),
+    level === 'MUNICIPIO'
+      ? (async () => {
+          const ufCode = code && code.length >= 2 ? code.slice(0, 2) : undefined;
+          const ufLife = await fetchAggregateSeries({
+            level: 'UF',
+            year: 2014,
+            code: ufCode,
+            aggregateId: LIFE_EXPECTANCY_AGGREGATE,
+            variableId: LIFE_EXPECTANCY_VARIABLE,
+          });
+          return expandUfPointsToMunicipios(ufLife, 2014, code);
+        })()
+      : fetchAggregateSeries({
+          level,
+          year: 2014,
+          code,
+          aggregateId: LIFE_EXPECTANCY_AGGREGATE,
+          variableId: LIFE_EXPECTANCY_VARIABLE,
+        }),
+  ]);
+
+  const literacyMap = new Map(literacyRows.map((item) => [item.code, item]));
+  const lifeMap = new Map(lifeRows.map((item) => [item.code, item]));
+  const incomeValues = incomeRows.map((item) => item.value).filter(Number.isFinite);
+  const minIncome = incomeValues.length ? Math.min(...incomeValues) : 0;
+  const maxIncome = incomeValues.length ? Math.max(...incomeValues) : 1;
+  const incomeSpan = maxIncome - minIncome;
+
+  return incomeRows
+    .map((income) => {
+      const literacy = literacyMap.get(income.code);
+      const life = lifeMap.get(income.code);
+      if (!literacy || !life) return null;
+
+      const educationDim = clampNumeric(literacy.value / 100, 0, 1);
+      const incomeDim = incomeSpan > 0 ? clampNumeric((income.value - minIncome) / incomeSpan, 0, 1) : 0.5;
+      const longevityDim = clampNumeric((life.value - 50) / 35, 0, 1);
+
+      return {
+        code: income.code,
+        name: income.name,
+        level: income.level,
+        year: 2022,
+        value: (educationDim + incomeDim + longevityDim) / 3,
+      } satisfies IndicatorPoint;
+    })
+    .filter((item): item is IndicatorPoint => item !== null);
+};
+
 export const fetchIndicatorData = async (
   indicator: IndicatorSlug,
   level: TerritoryLevel,
@@ -592,6 +1001,133 @@ export const fetchIndicatorData = async (
         aggregateId: TERRITORY_AGGREGATE,
         variableId: TERRITORY_AREA_VARIABLE,
       });
+    case 'income_per_capita':
+      return fetchIncomePerCapitaDerived(level, code);
+    case 'school_attendance_rate':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: SCHOOL_ATTENDANCE_AGGREGATE,
+        variableId: SCHOOL_ATTENDANCE_VARIABLE,
+        classificationQuery: SCHOOL_ATTENDANCE_CLASSIFICATIONS,
+      });
+    case 'higher_education_rate':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: HIGHER_EDUCATION_AGGREGATE,
+        variableId: HIGHER_EDUCATION_VARIABLE,
+        classificationQuery: HIGHER_EDUCATION_CLASSIFICATIONS,
+      });
+    case 'internet_access_rate':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: INTERNET_ACCESS_AGGREGATE,
+        variableId: INTERNET_ACCESS_VARIABLE,
+        classificationQuery: INTERNET_ACCESS_CLASSIFICATIONS,
+      });
+    case 'aging_index':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: AGING_INDEX_AGGREGATE,
+        variableId: AGING_INDEX_VARIABLE,
+      });
+    case 'unemployment_rate':
+      return fetchUfNativeWithMunicipioExpansion(
+        level,
+        year,
+        code,
+        UNEMPLOYMENT_AGGREGATE,
+        UNEMPLOYMENT_VARIABLE,
+        UNEMPLOYMENT_CLASSIFICATIONS,
+      );
+    case 'gini_index':
+      return fetchUfNativeWithMunicipioExpansion(level, year, code, GINI_AGGREGATE, GINI_VARIABLE);
+    case 'extreme_poverty_rate':
+      return fetchUfNativeWithMunicipioExpansion(
+        level,
+        year,
+        code,
+        EXTREME_POVERTY_AGGREGATE,
+        EXTREME_POVERTY_VARIABLE,
+      );
+    case 'infant_mortality_rate':
+      return fetchUfNativeWithMunicipioExpansion(
+        level,
+        year,
+        code,
+        INFANT_MORTALITY_AGGREGATE,
+        INFANT_MORTALITY_VARIABLE,
+      );
+    case 'life_expectancy':
+      return fetchUfNativeWithMunicipioExpansion(
+        level,
+        year,
+        code,
+        LIFE_EXPECTANCY_AGGREGATE,
+        LIFE_EXPECTANCY_VARIABLE,
+      );
+    case 'homicide_rate':
+      return fetchUfNativeWithMunicipioExpansion(level, year, code, HOMICIDE_AGGREGATE, HOMICIDE_RATE_VARIABLE);
+    case 'traffic_mortality_rate':
+      return fetchUfNativeWithMunicipioExpansion(
+        level,
+        year,
+        code,
+        TRAFFIC_MORTALITY_AGGREGATE,
+        TRAFFIC_MORTALITY_VARIABLE,
+        TRAFFIC_MORTALITY_CLASSIFICATIONS,
+      );
+    case 'fertility_rate':
+      return fetchUfNativeWithMunicipioExpansion(level, year, code, FERTILITY_AGGREGATE, FERTILITY_VARIABLE);
+    case 'prenatal_coverage':
+      return fetchRegiaoNativeWithExpansion(
+        level,
+        year,
+        code,
+        PRENATAL_AGGREGATE,
+        PRENATAL_VARIABLE,
+        PRENATAL_CLASSIFICATIONS,
+      );
+    case 'primary_care_coverage':
+      return fetchRegiaoNativeWithExpansion(
+        level,
+        year,
+        code,
+        PRIMARY_CARE_AGGREGATE,
+        PRIMARY_CARE_VARIABLE,
+        PRIMARY_CARE_CLASSIFICATIONS,
+      );
+    case 'crime_rate': {
+      const countRows = await fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: ROBBERY_AGGREGATE,
+        variableId: ROBBERY_COUNT_VARIABLE,
+        classificationQuery: ROBBERY_CLASSIFICATIONS,
+      });
+      return normalizeCountByPopulation(countRows, level, code);
+    }
+    case 'robbery_rate': {
+      const countRows = await fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: ROBBERY_HOUSEHOLD_AGGREGATE,
+        variableId: ROBBERY_HOUSEHOLD_COUNT_VARIABLE,
+        classificationQuery: ROBBERY_HOUSEHOLD_CLASSIFICATIONS,
+      });
+      return normalizeCountByPopulation(countRows, level, code);
+    }
+    case 'idh':
+      return fetchIdhProxy(level, code);
     default:
       throw new ApiError(
         501,
@@ -627,7 +1163,7 @@ export const fetchCityProfile = async (cityCode: string): Promise<CityProfilePay
 
   const ufCode = cityCode.slice(0, 2);
 
-  const [population, gdp, density, area, literacyRate, sewerCoverage, ufHomicideRate, ufTrafficRate] =
+  const [population, gdp, density, area, literacyRate, sewerCoverage, ufHomicideRate, ufTrafficRate, crimeRate] =
     await Promise.all([
       safeFirstPoint(() => fetchIndicatorData('population', 'MUNICIPIO', 2022, cityCode)),
       safeFirstPoint(() => fetchIndicatorData('gdp', 'MUNICIPIO', 2023, cityCode)),
@@ -654,25 +1190,12 @@ export const fetchCityProfile = async (cityCode: string): Promise<CityProfilePay
         }),
       ),
       safeFirstPoint(() =>
-        fetchAggregateSeries({
-          level: 'UF',
-          year: 2012,
-          code: ufCode,
-          aggregateId: CRIME_PROXY_AGGREGATE,
-          variableId: HOMICIDE_RATE_VARIABLE,
-          classificationQuery: CRIME_CLASSIFICATIONS,
-        }),
+        fetchIndicatorData('homicide_rate', 'UF', 2023, ufCode),
       ),
       safeFirstPoint(() =>
-        fetchAggregateSeries({
-          level: 'UF',
-          year: 2012,
-          code: ufCode,
-          aggregateId: CRIME_PROXY_AGGREGATE,
-          variableId: TRAFFIC_RATE_VARIABLE,
-          classificationQuery: CRIME_CLASSIFICATIONS,
-        }),
+        fetchIndicatorData('traffic_mortality_rate', 'UF', 2023, ufCode),
       ),
+      safeFirstPoint(() => fetchIndicatorData('crime_rate', 'MUNICIPIO', 2021, cityCode)),
     ]);
 
   const cityName = population?.name ?? gdp?.name ?? density?.name ?? `Municipio ${cityCode}`;
@@ -745,36 +1268,36 @@ export const fetchCityProfile = async (cityCode: string): Promise<CityProfilePay
     }),
     buildMetric({
       key: 'homicide_rate_uf_proxy',
-      label: 'Mortalidade por homicidio (proxy UF)',
+      label: 'Homicidios (taxa por 100 mil, UF)',
       category: 'seguranca',
-      source: 'IBGE API (agregado 899/2150, proxy UF)',
+      source: 'IBGE API (agregado 6606/13532)',
       unit: 'obitos/100 mil',
-      year: 2012,
+      year: 2023,
       value: ufHomicideRate?.value ?? null,
       status: ufHomicideRate ? 'partial' : 'unavailable',
-      notes: 'Proxy por UF. Fonte municipal plugavel recomendada: SENASP/IPEA.',
+      notes: 'Disponivel por UF na API; em nivel municipal a aplicacao usa expansao por UF.',
     }),
     buildMetric({
       key: 'traffic_mortality_uf_proxy',
-      label: 'Mortalidade no transito (proxy UF)',
+      label: 'Mortalidade no transito (taxa por 100 mil, UF)',
       category: 'saude',
-      source: 'IBGE API (agregado 899/2151, proxy UF)',
+      source: 'IBGE API (agregado 4408/9734)',
       unit: 'obitos/100 mil',
-      year: 2012,
+      year: 2023,
       value: ufTrafficRate?.value ?? null,
       status: ufTrafficRate ? 'partial' : 'unavailable',
-      notes: 'Proxy por UF.',
+      notes: 'Disponivel por UF na API; em nivel municipal a aplicacao usa expansao por UF.',
     }),
     buildMetric({
       key: 'crime_rate',
       label: 'Taxa de criminalidade municipal',
       category: 'seguranca',
-      source: 'SINESP/SENASP (dados.gov.br / gov.br Conecta)',
+      source: 'IBGE API (PNAD vitimizacao por roubo, normalizado por populacao)',
       unit: 'ocorrencias/100 mil',
-      year: null,
-      value: null,
-      status: 'unavailable',
-      notes: 'Conector externo pendente.',
+      year: 2021,
+      value: crimeRate?.value ?? null,
+      status: crimeRate ? 'ok' : 'unavailable',
+      notes: 'SINESP/SENASP permanece conector plugavel complementar.',
     }),
   ];
 

@@ -17,7 +17,7 @@ cityProfileRoute.get('/', zValidator('query', querySchema), async (c) => {
   return cachedJson(
     c,
     'city-profile',
-    { cityCode, schemaVersion: '2026-02-18-v2' },
+    { cityCode, schemaVersion: '2026-02-18-v3' },
     async () => {
       const payload = await fetchCityProfile(cityCode);
       return payload;

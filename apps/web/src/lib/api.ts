@@ -43,7 +43,7 @@ const resolveApiBase = (): string => {
 };
 
 const API_BASE = resolveApiBase();
-const CACHE_PREFIX = 'ibge-map-cache-v6';
+const CACHE_PREFIX = 'ibge-map-cache-v7';
 
 type RequestParams = Record<string, string | number | boolean | undefined>;
 

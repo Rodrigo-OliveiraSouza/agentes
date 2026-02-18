@@ -481,10 +481,14 @@ body,
 .panel-chart {
   min-height: 300px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-chart-compact {
-  min-height: 230px;
+  min-height: 0;
+  height: 240px;
+  max-height: 240px;
 }
 
 .panel-chart-canvas {
@@ -496,8 +500,9 @@ body,
 }
 
 .panel-chart-canvas-compact {
-  height: 190px;
-  max-height: 190px;
+  min-height: 150px;
+  height: 150px;
+  max-height: 150px;
 }
 
 .panel-chart-canvas > canvas {
@@ -509,6 +514,8 @@ body,
   margin-top: 8px;
   display: grid;
   gap: 4px;
+  max-height: 56px;
+  overflow-y: auto;
 }
 
 .panel-chart-summary p {
@@ -683,14 +690,20 @@ body,
     min-height: 240px;
   }
 
+  .panel-chart-compact {
+    height: 220px;
+    max-height: 220px;
+  }
+
   .panel-chart-canvas {
     height: 240px;
     max-height: 240px;
   }
 
   .panel-chart-canvas-compact {
-    height: 170px;
-    max-height: 170px;
+    min-height: 136px;
+    height: 136px;
+    max-height: 136px;
   }
 
   .panel-chart-head {

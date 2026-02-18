@@ -32,6 +32,12 @@ const SANITATION_AGGREGATE = '3154';
 const SANITATION_SEWER_RATE_VARIABLE = '1000096';
 const SANITATION_CLASSIFICATIONS = 'classificacao=299[10941]';
 
+const HOUSING_INFRA_AGGREGATE = '3157';
+const HOUSING_INFRA_PERCENT_VARIABLE = '1000096';
+const WATER_NETWORK_CLASSIFICATIONS = 'classificacao=61[10970]';
+const GARBAGE_COLLECTION_CLASSIFICATIONS = 'classificacao=67[2520]';
+const ELECTRICITY_ACCESS_CLASSIFICATIONS = 'classificacao=309[3011]';
+
 const CRIME_PROXY_AGGREGATE = '899';
 const HOMICIDE_RATE_VARIABLE = '2150';
 const TRAFFIC_RATE_VARIABLE = '2151';
@@ -116,8 +122,10 @@ export const INDICATORS: IndicatorDefinition[] = [
     source: 'IBGE Censo Demografico (agregado 1301, variavel 615)',
     sourceLabel: 'IBGE API + BrasilAPI (auxiliar territorial)',
     sourceUrl: SOURCE_URLS.brasilApi,
-    supported: false,
-    notes: 'Indicador complementar, fora do foco dos 5 principais.',
+    supported: true,
+    yearMin: 2010,
+    yearMax: 2010,
+    defaultYear: 2010,
   },
   {
     slug: 'idh',
@@ -227,19 +235,27 @@ export const INDICATORS: IndicatorDefinition[] = [
   },
   {
     slug: 'water_network_coverage',
-    label: 'Cobertura de agua encanada',
+    label: 'Cobertura de agua encanada (IBGE)',
     unit: '%',
-    source: 'IBGE Saneamento (planejado)',
-    supported: false,
-    notes: 'Conector planejado para infraestrutura urbana.',
+    source: 'IBGE Censo Demografico (agregado 3157, variavel 1000096, classificacao 61[10970])',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2010,
+    yearMax: 2010,
+    defaultYear: 2010,
   },
   {
     slug: 'garbage_collection_coverage',
-    label: 'Cobertura de coleta de lixo',
+    label: 'Cobertura de coleta de lixo (IBGE)',
     unit: '%',
-    source: 'IBGE Saneamento (planejado)',
-    supported: false,
-    notes: 'Conector planejado para servicos urbanos.',
+    source: 'IBGE Censo Demografico (agregado 3157, variavel 1000096, classificacao 67[2520])',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2010,
+    yearMax: 2010,
+    defaultYear: 2010,
   },
   {
     slug: 'internet_access_rate',
@@ -251,11 +267,15 @@ export const INDICATORS: IndicatorDefinition[] = [
   },
   {
     slug: 'electricity_access_rate',
-    label: 'Domicilios com energia eletrica',
+    label: 'Domicilios com energia eletrica (IBGE)',
     unit: '%',
-    source: 'IBGE Censo (planejado)',
-    supported: false,
-    notes: 'Conector planejado para infraestrutura basica.',
+    source: 'IBGE Censo Demografico (agregado 3157, variavel 1000096, classificacao 309[3011])',
+    sourceLabel: 'IBGE API',
+    sourceUrl: SOURCE_URLS.ibge,
+    supported: true,
+    yearMin: 2010,
+    yearMax: 2010,
+    defaultYear: 2010,
   },
   {
     slug: 'homicide_rate',
@@ -536,6 +556,33 @@ export const fetchIndicatorData = async (
         aggregateId: SANITATION_AGGREGATE,
         variableId: SANITATION_SEWER_RATE_VARIABLE,
         classificationQuery: SANITATION_CLASSIFICATIONS,
+      });
+    case 'water_network_coverage':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: HOUSING_INFRA_AGGREGATE,
+        variableId: HOUSING_INFRA_PERCENT_VARIABLE,
+        classificationQuery: WATER_NETWORK_CLASSIFICATIONS,
+      });
+    case 'garbage_collection_coverage':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: HOUSING_INFRA_AGGREGATE,
+        variableId: HOUSING_INFRA_PERCENT_VARIABLE,
+        classificationQuery: GARBAGE_COLLECTION_CLASSIFICATIONS,
+      });
+    case 'electricity_access_rate':
+      return fetchAggregateSeries({
+        level,
+        year,
+        code,
+        aggregateId: HOUSING_INFRA_AGGREGATE,
+        variableId: HOUSING_INFRA_PERCENT_VARIABLE,
+        classificationQuery: ELECTRICITY_ACCESS_CLASSIFICATIONS,
       });
     case 'territory_area':
       return fetchAggregateSeries({

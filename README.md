@@ -217,7 +217,7 @@ npm run prisma:migrate
 
 ## Observações de MVP
 
-- Indicadores principais ativos no mapa (IBGE): **População residente**, **PIB a preços correntes**, **Densidade demográfica**, **Taxa de alfabetização** e **Cobertura de rede de esgoto**.
+- Indicadores ativos no mapa (IBGE): **População residente**, **PIB a preços correntes**, **Densidade demográfica**, **Taxa de alfabetização**, **Cobertura de rede de esgoto**, **Área territorial**, **Cobertura de água encanada**, **Cobertura de coleta de lixo** e **Domicílios com energia elétrica**.
 - IDH e criminalidade permanecem como conectores plugáveis.
 
 ## Fontes de dados e conectores

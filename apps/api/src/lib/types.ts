@@ -6,7 +6,28 @@ export type IndicatorSlug =
   | 'demographic_density'
   | 'territory_area'
   | 'idh'
-  | 'crime_rate';
+  | 'crime_rate'
+  | 'income_per_capita'
+  | 'unemployment_rate'
+  | 'gini_index'
+  | 'extreme_poverty_rate'
+  | 'literacy_rate'
+  | 'school_attendance_rate'
+  | 'higher_education_rate'
+  | 'infant_mortality_rate'
+  | 'life_expectancy'
+  | 'prenatal_coverage'
+  | 'primary_care_coverage'
+  | 'water_network_coverage'
+  | 'sewer_network_coverage'
+  | 'garbage_collection_coverage'
+  | 'internet_access_rate'
+  | 'electricity_access_rate'
+  | 'homicide_rate'
+  | 'robbery_rate'
+  | 'traffic_mortality_rate'
+  | 'aging_index'
+  | 'fertility_rate';
 
 export type AppBindings = {
   DATABASE_URL?: string;

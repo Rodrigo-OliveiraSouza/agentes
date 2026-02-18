@@ -3,11 +3,13 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { cachedJson } from '../lib/cache';
 import { ApiError } from '../lib/errors';
-import { fetchIndicatorData, getIndicatorDefinition } from '../lib/ibge';
+import { fetchIndicatorData, getIndicatorDefinition, INDICATOR_SLUGS } from '../lib/ibge';
 import type { AppBindings, IndicatorSlug, TerritoryLevel } from '../lib/types';
 
+const indicatorEnum = z.enum(INDICATOR_SLUGS as [IndicatorSlug, ...IndicatorSlug[]]);
+
 const querySchema = z.object({
-  indicator: z.enum(['population', 'gdp', 'demographic_density', 'territory_area', 'idh', 'crime_rate']),
+  indicator: indicatorEnum,
   level: z.enum(['REGIAO', 'UF', 'MUNICIPIO']).default('UF'),
   code: z.string().optional(),
   year: z.coerce.number().int().min(1900).max(2100).optional(),

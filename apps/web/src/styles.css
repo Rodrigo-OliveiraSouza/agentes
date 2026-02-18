@@ -255,11 +255,12 @@ body,
 
 .topbar {
   display: grid;
-  grid-template-columns: repeat(8, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
   padding: 12px;
   background: linear-gradient(120deg, var(--mir-green), var(--mir-blue));
   color: #ffffff;
+  align-items: end;
 }
 
 .filter-group {
@@ -283,23 +284,25 @@ body,
 }
 
 .filter-group.wide {
-  grid-column: span 2;
+  grid-column: auto;
 }
 
 .filter-group.narrow {
-  max-width: 110px;
+  max-width: none;
 }
 
 .content {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 25vw, 420px);
   gap: 0;
-  height: calc(100vh - 88px);
+  flex: 1;
+  min-height: 0;
 }
 
 .map-area {
   position: relative;
   overflow: hidden;
+  min-height: clamp(460px, 62vh, 920px);
 }
 
 .map-fallback {
@@ -500,8 +503,7 @@ body,
   .content {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr auto;
-    height: auto;
-    min-height: calc(100vh - 150px);
+    min-height: 0;
   }
 
   .side-panel {

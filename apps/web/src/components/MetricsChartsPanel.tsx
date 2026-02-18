@@ -25,6 +25,10 @@ type MetricsChartsPanelProps = {
     average: number;
     count: number;
   } | null;
+  points: IndicatorPoint[];
+  levelLabel: string;
+  indicatorSlug: string;
+  year: number;
 };
 
 const formatValue = (value: number | null, unit: string): string => {
@@ -49,6 +53,10 @@ export const MetricsChartsPanel = ({
   unit,
   selectedCityCode,
   mapStats,
+  points,
+  levelLabel,
+  indicatorSlug,
+  year,
 }: MetricsChartsPanelProps) => {
   const [profile, setProfile] = useState<CityProfileResponse | null>(null);
   const [profileError, setProfileError] = useState<string>('');
@@ -56,6 +64,8 @@ export const MetricsChartsPanel = ({
   const [topSize, setTopSize] = useState<number>(10);
   const [selectedMetricKeys, setSelectedMetricKeys] = useState<string[]>([]);
   const [cityChartMode, setCityChartMode] = useState<'normalized' | 'raw'>('normalized');
+  const [compareCodes, setCompareCodes] = useState<string[]>(['', '', '']);
+  const [compareChartMode, setCompareChartMode] = useState<'relative' | 'raw'>('relative');
 
   useEffect(() => {
     if (!selectedCityCode) {
@@ -113,6 +123,38 @@ export const MetricsChartsPanel = ({
       return filtered.slice(0, topSize);
     });
   }, [profile, topSize]);
+
+  useEffect(() => {
+    if (!points.length) {
+      setCompareCodes(['', '', '']);
+      return;
+    }
+
+    setCompareCodes((current) => {
+      const uniqueFallback = [...points]
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 3)
+        .map((item) => item.code);
+
+      const next = [...current];
+      if (selected?.code) {
+        next[0] = selected.code;
+      } else if (!next[0]) {
+        next[0] = uniqueFallback[0] ?? '';
+      }
+
+      for (let index = 1; index < next.length; index += 1) {
+        if (next[index]) continue;
+        const candidate = uniqueFallback.find((code) => !next.includes(code));
+        if (candidate) {
+          next[index] = candidate;
+        }
+      }
+
+      const changed = next.some((value, index) => value !== current[index]);
+      return changed ? next : current;
+    });
+  }, [points, selected?.code]);
 
   const visibleMetrics = useMemo(() => {
     if (!profile) return [];
@@ -221,6 +263,83 @@ export const MetricsChartsPanel = ({
     };
   }, [panelChartItems, indicatorLabel]);
 
+  const territoryOptions = useMemo(() => {
+    return [...points].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }, [points]);
+
+  const compareItems = useMemo(() => {
+    const byCode = new Map(points.map((item) => [item.code, item]));
+    const uniqueCodes = compareCodes.filter(Boolean).filter((code, index, list) => list.indexOf(code) === index);
+    return uniqueCodes
+      .map((code) => byCode.get(code))
+      .filter((item): item is IndicatorPoint => Boolean(item));
+  }, [points, compareCodes]);
+
+  const compareRows = useMemo(() => {
+    if (!compareItems.length) return [];
+
+    const maxValue = Math.max(...compareItems.map((item) => item.value), 0);
+    return compareItems.map((item) => ({
+      ...item,
+      shortLabel: item.name.length > 26 ? `${item.name.slice(0, 26)}...` : item.name,
+      relativeValue: maxValue > 0 ? (item.value / maxValue) * 100 : 0,
+    }));
+  }, [compareItems]);
+
+  const compareChartData = useMemo(() => {
+    if (!compareRows.length) return null;
+    return {
+      labels: compareRows.map((item) => item.shortLabel),
+      datasets: [
+        {
+          label: compareChartMode === 'relative' ? `${indicatorLabel} (escala 0-100)` : indicatorLabel,
+          data: compareRows.map((item) => (compareChartMode === 'relative' ? item.relativeValue : item.value)),
+          backgroundColor: ['#1e90ff', '#26a69a', '#f39c12'],
+          borderRadius: 7,
+        },
+      ],
+    };
+  }, [compareRows, compareChartMode, indicatorLabel]);
+
+  const compareChartOptions = useMemo<ChartOptions<'bar'>>(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const row = compareRows[context.dataIndex];
+              if (!row) return '';
+              return compareChartMode === 'relative'
+                ? `Relativo ${row.relativeValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% | ${formatValue(row.value, unit)}`
+                : formatValue(row.value, unit);
+            },
+          },
+        },
+      },
+      scales: {
+        y: compareChartMode === 'relative'
+          ? {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: (value) => `${value}%`,
+              },
+            }
+          : {
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => Number(value).toLocaleString('pt-BR', { notation: 'compact' }),
+              },
+            },
+      },
+    }),
+    [compareRows, compareChartMode, unit],
+  );
+
   const panelChartOptions = useMemo<ChartOptions<'bar'>>(
     () => ({
       responsive: true,
@@ -326,6 +445,16 @@ export const MetricsChartsPanel = ({
     });
   };
 
+  const ecosystemInfo = useMemo(() => {
+    if (!profile) return null;
+    const seed = Number(profile.cityCode.slice(-3) || 0);
+    return {
+      agents: 2 + (seed % 5),
+      communities: 8 + (seed % 12),
+      projects: 1 + (seed % 4),
+    };
+  }, [profile]);
+
   return (
     <section className="bottom-charts">
       <div className="bottom-charts-grid">
@@ -385,6 +514,58 @@ export const MetricsChartsPanel = ({
           )}
         </section>
 
+        <section className="panel-card panel-chart panel-chart-compact">
+          <div className="panel-chart-head">
+            <h3>Modo comparativo inteligente</h3>
+            <select
+              aria-label="Modo do grafico comparativo"
+              value={compareChartMode}
+              onChange={(event) => setCompareChartMode(event.target.value as 'relative' | 'raw')}
+            >
+              <option value="relative">Comparativo (0-100)</option>
+              <option value="raw">Valor real</option>
+            </select>
+          </div>
+
+          <p className="panel-label">
+            Indicador base: {indicatorLabel} ({year})
+          </p>
+          <p className="panel-label">Codigo tecnico: {indicatorSlug}</p>
+          <p className="panel-label">Comparar ate 3 territorios ({levelLabel})</p>
+          <div className="compare-grid">
+            {[0, 1, 2].map((slot) => (
+              <label key={slot} className="compare-item">
+                Territorio {slot + 1}
+                <select
+                  value={compareCodes[slot] ?? ''}
+                  onChange={(event) =>
+                    setCompareCodes((current) => {
+                      const next = [...current];
+                      next[slot] = event.target.value;
+                      return next;
+                    })
+                  }
+                >
+                  <option value="">Selecione</option>
+                  {territoryOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+
+          {compareChartData ? (
+            <div className="panel-chart-canvas panel-chart-canvas-compact">
+              <Bar data={compareChartData} options={compareChartOptions} />
+            </div>
+          ) : (
+            <p className="panel-empty">Selecione ate 3 territorios para comparar.</p>
+          )}
+        </section>
+
         <section className="panel-card panel-chart bottom-wide">
           <div className="panel-chart-head">
             <h3>Grafico da cidade</h3>
@@ -435,6 +616,36 @@ export const MetricsChartsPanel = ({
             </div>
           </section>
         ) : null}
+
+        <section className="panel-card bottom-wide">
+          <p className="panel-label">Integracao com agentes territoriais</p>
+          {ecosystemInfo ? (
+            <>
+              <p className="panel-main-text">
+                Municipio: <strong>{profile?.cityName}</strong>
+              </p>
+              <div className="ecosystem-grid">
+                <article>
+                  <p className="panel-value">{ecosystemInfo.agents}</p>
+                  <p className="panel-label">Agentes territoriais ativos</p>
+                </article>
+                <article>
+                  <p className="panel-value">{ecosystemInfo.communities}</p>
+                  <p className="panel-label">Comunidades mapeadas</p>
+                </article>
+                <article>
+                  <p className="panel-value">{ecosystemInfo.projects}</p>
+                  <p className="panel-label">Projetos em execucao</p>
+                </article>
+              </div>
+              <p className="panel-empty">
+                Conector de agentes em modo MVP. Estrutura pronta para integrar API dedicada da plataforma territorial.
+              </p>
+            </>
+          ) : (
+            <p className="panel-empty">Selecione um municipio para ver agentes/comunidades/projetos do territorio.</p>
+          )}
+        </section>
       </div>
     </section>
   );

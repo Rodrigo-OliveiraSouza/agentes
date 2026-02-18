@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import { centroid } from '@turf/turf';
@@ -12,6 +12,8 @@ type MapCanvasProps = {
   unit: string;
   selectedCode: string | null;
   onSelect: (code: string) => void;
+  legendScaleMode: 'linear' | 'quartile' | 'percentile';
+  themeMode: 'institutional' | 'dark';
 };
 
 type CentroidPoint = {
@@ -29,6 +31,15 @@ const containerStyle: React.CSSProperties = {
 
 const initialCenter = { lat: -14.2, lng: -51.9 };
 const initialZoom = 4;
+
+const DARK_MAP_STYLE: google.maps.MapTypeStyle[] = [
+  { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8ec3b9' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a3646' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1626' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#304a7d' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#98a5be' }] },
+];
 
 const mapOptions: google.maps.MapOptions = {
   disableDefaultUI: false,
@@ -52,22 +63,13 @@ const clamp = (value: number, min: number, max: number): number => {
   return Math.min(max, Math.max(min, value));
 };
 
+const quantileFrom = (sorted: number[], p: number): number => {
+  if (!sorted.length) return 0;
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.floor((sorted.length - 1) * p)));
+  return sorted[index];
+};
+
 const HEATMAP_COLORS = ['#eff6ff', '#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e3a8a'];
-
-const colorFor = (value: number, min: number, max: number): string => {
-  if (max <= min) return 'hsl(200, 86%, 62%)';
-  const ratio = clamp((value - min) / (max - min), 0, 1);
-  const hue = 210 - ratio * 190;
-  const lightness = 84 - ratio * 44;
-  return `hsl(${Math.round(hue)}, 88%, ${Math.round(lightness)}%)`;
-};
-
-const heatmapColorFor = (value: number, min: number, max: number): string => {
-  if (max <= min) return HEATMAP_COLORS[HEATMAP_COLORS.length - 1];
-  const ratio = clamp((value - min) / (max - min), 0, 1);
-  const index = Math.round(ratio * (HEATMAP_COLORS.length - 1));
-  return HEATMAP_COLORS[index];
-};
 
 const areaOpacityFor = (mode: ViewMode): number => {
   if (mode === 'choropleth') return 0.82;
@@ -94,7 +96,16 @@ const radiusFor = (value: number, max: number, zoom: number): number => {
   return (7000 + normalized * 32000) * zoomScale;
 };
 
-export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect }: MapCanvasProps) => {
+export const MapCanvas = ({
+  geojson,
+  points,
+  mode,
+  unit,
+  selectedCode,
+  onSelect,
+  legendScaleMode,
+  themeMode,
+}: MapCanvasProps) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
@@ -103,12 +114,14 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
 
   const [currentZoom, setCurrentZoom] = useState<number>(initialZoom);
   const mapRef = useRef<google.maps.Map | null>(null);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const circlesRef = useRef<google.maps.Circle[]>([]);
   const circleValuesRef = useRef<number[]>([]);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const clusterRef = useRef<MarkerClusterer | null>(null);
 
   const values = useMemo(() => points.map((point) => point.value), [points]);
+  const sortedValues = useMemo(() => [...values].sort((a, b) => a - b), [values]);
   const min = useMemo(() => (values.length ? Math.min(...values) : 0), [values]);
   const max = useMemo(() => (values.length ? Math.max(...values) : 0), [values]);
   const average = useMemo(
@@ -124,6 +137,67 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
   const pointsByCode = useMemo(() => {
     return new Map(points.map((point) => [point.code, point]));
   }, [points]);
+
+  const rankByCode = useMemo(() => {
+    return new Map(
+      [...points]
+        .sort((a, b) => b.value - a.value)
+        .map((point, index) => [point.code, index + 1]),
+    );
+  }, [points]);
+
+  const quartiles = useMemo(
+    () => ({
+      q1: quantileFrom(sortedValues, 0.25),
+      q2: quantileFrom(sortedValues, 0.5),
+      q3: quantileFrom(sortedValues, 0.75),
+    }),
+    [sortedValues],
+  );
+
+  const ratioByScale = useCallback(
+    (value: number): number => {
+      if (sortedValues.length <= 1) return 0.5;
+
+      if (legendScaleMode === 'quartile') {
+        if (value <= quartiles.q1) return 0.2;
+        if (value <= quartiles.q2) return 0.45;
+        if (value <= quartiles.q3) return 0.7;
+        return 0.95;
+      }
+
+      if (legendScaleMode === 'percentile') {
+        let low = 0;
+        let high = sortedValues.length - 1;
+        while (low <= high) {
+          const mid = Math.floor((low + high) / 2);
+          if (sortedValues[mid] <= value) {
+            low = mid + 1;
+          } else {
+            high = mid - 1;
+          }
+        }
+        return clamp(high / (sortedValues.length - 1), 0, 1);
+      }
+
+      return max <= min ? 0.5 : clamp((value - min) / (max - min), 0, 1);
+    },
+    [sortedValues, legendScaleMode, quartiles.q1, quartiles.q2, quartiles.q3, max, min],
+  );
+
+  const areaColor = useCallback(
+    (value: number, heatmapMode: boolean): string => {
+      const ratio = ratioByScale(value);
+      if (heatmapMode) {
+        const index = Math.round(ratio * (HEATMAP_COLORS.length - 1));
+        return HEATMAP_COLORS[index];
+      }
+      const hue = 210 - ratio * 190;
+      const lightness = 84 - ratio * 44;
+      return `hsl(${Math.round(hue)}, 88%, ${Math.round(lightness)}%)`;
+    },
+    [ratioByScale],
+  );
 
   const centroidPoints = useMemo<CentroidPoint[]>(() => {
     if (!geojson) return [];
@@ -149,6 +223,13 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
   }, [geojson, pointsByCode]);
 
   useEffect(() => {
+    if (!mapRef.current) return;
+    mapRef.current.setOptions({
+      styles: themeMode === 'dark' ? DARK_MAP_STYLE : [],
+    });
+  }, [themeMode]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
@@ -167,6 +248,8 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
     });
 
     google.maps.event.clearListeners(map.data, 'click');
+    google.maps.event.clearListeners(map.data, 'mouseover');
+    google.maps.event.clearListeners(map.data, 'mouseout');
 
     if (!geojson) return;
 
@@ -182,8 +265,8 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
         value === null
           ? '#e5e7eb'
           : mode === 'heatmap'
-            ? heatmapColorFor(value, min, max)
-            : colorFor(value, min, max);
+            ? areaColor(value, true)
+            : areaColor(value, false);
       const fillOpacity =
         value === null
           ? 0.45
@@ -206,6 +289,35 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
       if (code) {
         onSelect(code);
       }
+    });
+
+    map.data.addListener('mouseover', (event: google.maps.Data.MouseEvent) => {
+      const code = String(event.feature.getProperty('codarea') ?? '');
+      const point = pointsByCode.get(code);
+      if (!point || !event.latLng) return;
+
+      const rank = rankByCode.get(code) ?? '-';
+      const diff = average > 0 ? ((point.value - average) / average) * 100 : 0;
+      const diffLabel = diff >= 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`;
+      const html = `
+        <div style="font-size:12px;line-height:1.4;max-width:260px;">
+          <strong>${point.name}</strong><br/>
+          Valor: ${point.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${unit}<br/>
+          Ranking: ${rank} de ${points.length}<br/>
+          Dif. media: ${diffLabel}
+        </div>
+      `;
+
+      if (!infoWindowRef.current) {
+        infoWindowRef.current = new google.maps.InfoWindow();
+      }
+      infoWindowRef.current.setContent(html);
+      infoWindowRef.current.setPosition(event.latLng);
+      infoWindowRef.current.open(map);
+    });
+
+    map.data.addListener('mouseout', () => {
+      infoWindowRef.current?.close();
     });
 
     if (mode === 'bubbles') {
@@ -244,7 +356,20 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
       });
     }
 
-  }, [geojson, pointsByCode, selectedCode, onSelect, mode, min, max, centroidPoints, currentZoom]);
+  }, [
+    geojson,
+    pointsByCode,
+    selectedCode,
+    onSelect,
+    mode,
+    centroidPoints,
+    currentZoom,
+    areaColor,
+    rankByCode,
+    average,
+    points.length,
+    unit,
+  ]);
 
   useEffect(() => {
     if (mode === 'bubbles' && circlesRef.current.length) {
@@ -335,7 +460,7 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
       {values.length ? (
         <div className="map-legend">
           <p className="map-legend-title">
-            {mode === 'heatmap' ? 'Escala de calor por territorio' : 'Escala do indicador'}
+            {mode === 'heatmap' ? 'Escala de calor por territorio' : 'Escala do indicador'} ({legendScaleMode})
           </p>
           <div className="map-legend-gradient" style={{ background: legendGradient }} />
           <div className="map-legend-row">
@@ -343,6 +468,20 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
             <span>Media {average.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
             <span>Max {max.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
           </div>
+          {legendScaleMode === 'quartile' ? (
+            <div className="map-legend-row">
+              <span>Q1 {quartiles.q1.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+              <span>Q2 {quartiles.q2.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+              <span>Q3 {quartiles.q3.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+            </div>
+          ) : null}
+          {legendScaleMode === 'percentile' ? (
+            <div className="map-legend-row">
+              <span>P10 {quantileFrom(sortedValues, 0.1).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+              <span>P50 {quantileFrom(sortedValues, 0.5).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+              <span>P90 {quantileFrom(sortedValues, 0.9).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+            </div>
+          ) : null}
           {mode === 'heatmap' ? (
             <div className="map-legend-row">
               <span>Mais claro = menor indice</span>

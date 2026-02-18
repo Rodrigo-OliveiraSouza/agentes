@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapCanvas } from './components/MapCanvas';
 import { SidePanel } from './components/SidePanel';
 import { MetricsChartsPanel } from './components/MetricsChartsPanel';
@@ -20,6 +20,15 @@ const levelLabel: Record<TerritoryLevel, string> = {
   REGIAO: 'Regiao',
   UF: 'UF',
   MUNICIPIO: 'Municipio',
+};
+
+type ThemeMode = 'institutional' | 'dark';
+type LegendScaleMode = 'linear' | 'quartile' | 'percentile';
+
+const legendScaleLabel: Record<LegendScaleMode, string> = {
+  linear: 'Linear',
+  quartile: 'Quartil',
+  percentile: 'Percentil',
 };
 
 const modeOptions: ViewMode[] = ['choropleth', 'bubbles', 'heatmap', 'clusters'];
@@ -44,6 +53,112 @@ const indicatorSourceFrom = (slug: string, indicators: IndicatorDefinition[]): s
 
 const indicatorSourceUrlFrom = (slug: string, indicators: IndicatorDefinition[]): string | undefined => {
   return indicators.find((item) => item.slug === slug)?.sourceUrl;
+};
+
+type SyntheticIndicatorKey = 'synthetic_vulnerability' | 'synthetic_equity' | 'synthetic_inclusion';
+
+type SyntheticComponent = {
+  slug: string;
+  weight: number;
+  direction: 'positive' | 'negative';
+};
+
+type SyntheticDefinition = {
+  indicator: IndicatorDefinition;
+  components: SyntheticComponent[];
+};
+
+const SYNTHETIC_INDICATORS: Record<SyntheticIndicatorKey, SyntheticDefinition> = {
+  synthetic_vulnerability: {
+    indicator: {
+      slug: 'synthetic_vulnerability',
+      label: 'Indice de Vulnerabilidade Territorial (sintetico)',
+      unit: 'score (0-100)',
+      source: 'Composicao ponderada de renda per capita, esgoto, alfabetizacao e extrema pobreza.',
+      sourceLabel: 'Indice sintetico (MVP)',
+      sourceUrl: 'https://servicodados.ibge.gov.br/api/docs/',
+      supported: true,
+      yearMin: 2010,
+      yearMax: 2024,
+      defaultYear: 2022,
+      notes: 'Quanto maior o score, maior vulnerabilidade territorial estimada.',
+    },
+    components: [
+      { slug: 'income_per_capita', weight: 0.3, direction: 'negative' },
+      { slug: 'sewer_network_coverage', weight: 0.25, direction: 'negative' },
+      { slug: 'literacy_rate', weight: 0.2, direction: 'negative' },
+      { slug: 'extreme_poverty_rate', weight: 0.25, direction: 'positive' },
+    ],
+  },
+  synthetic_equity: {
+    indicator: {
+      slug: 'synthetic_equity',
+      label: 'Indice de Equidade Racial (proxy sintetico)',
+      unit: 'score (0-100)',
+      source: 'Composicao ponderada de alfabetizacao, ensino superior, renda e acesso a saneamento.',
+      sourceLabel: 'Indice sintetico (MVP)',
+      sourceUrl: 'https://servicodados.ibge.gov.br/api/docs/',
+      supported: true,
+      yearMin: 2010,
+      yearMax: 2024,
+      defaultYear: 2022,
+      notes: 'Quanto maior o score, maior equidade territorial estimada.',
+    },
+    components: [
+      { slug: 'literacy_rate', weight: 0.28, direction: 'positive' },
+      { slug: 'higher_education_rate', weight: 0.27, direction: 'positive' },
+      { slug: 'income_per_capita', weight: 0.25, direction: 'positive' },
+      { slug: 'sewer_network_coverage', weight: 0.2, direction: 'positive' },
+    ],
+  },
+  synthetic_inclusion: {
+    indicator: {
+      slug: 'synthetic_inclusion',
+      label: 'Indice de Inclusao Social (sintetico)',
+      unit: 'score (0-100)',
+      source: 'Composicao ponderada de agua, energia, internet e atencao primaria.',
+      sourceLabel: 'Indice sintetico (MVP)',
+      sourceUrl: 'https://servicodados.ibge.gov.br/api/docs/',
+      supported: true,
+      yearMin: 2010,
+      yearMax: 2024,
+      defaultYear: 2022,
+      notes: 'Quanto maior o score, maior inclusao social territorial estimada.',
+    },
+    components: [
+      { slug: 'water_network_coverage', weight: 0.28, direction: 'positive' },
+      { slug: 'electricity_access_rate', weight: 0.22, direction: 'positive' },
+      { slug: 'internet_access_rate', weight: 0.3, direction: 'positive' },
+      { slug: 'primary_care_coverage', weight: 0.2, direction: 'positive' },
+    ],
+  },
+};
+
+const syntheticKeys = Object.keys(SYNTHETIC_INDICATORS) as SyntheticIndicatorKey[];
+
+const isSyntheticIndicator = (slug: string): slug is SyntheticIndicatorKey => {
+  return syntheticKeys.includes(slug as SyntheticIndicatorKey);
+};
+
+const withSyntheticIndicators = (base: IndicatorDefinition[]): IndicatorDefinition[] => {
+  const existing = new Set(base.map((item) => item.slug));
+  const syntheticItems = syntheticKeys
+    .map((key) => SYNTHETIC_INDICATORS[key].indicator)
+    .filter((item) => !existing.has(item.slug));
+  return [...base, ...syntheticItems];
+};
+
+const clampYear = (value: number, min?: number, max?: number): number => {
+  const minYear = min ?? value;
+  const maxYear = max ?? value;
+  if (value < minYear) return minYear;
+  if (value > maxYear) return maxYear;
+  return value;
+};
+
+const toSafeNumber = (value: number): number => {
+  if (!Number.isFinite(value)) return 0;
+  return Number(value.toFixed(2));
 };
 
 const buildRequestCode = (level: TerritoryLevel, ufCode: string, municipalityCode: string): string | undefined => {
@@ -86,6 +201,106 @@ const filterByTerritorySelection = (
   return rows;
 };
 
+const buildSyntheticData = async (
+  slug: SyntheticIndicatorKey,
+  level: TerritoryLevel,
+  year: number,
+  code: string | undefined,
+  indicatorCatalog: IndicatorDefinition[],
+): Promise<DataResponse> => {
+  const config = SYNTHETIC_INDICATORS[slug];
+  const requestedYear = year;
+
+  const componentPayloads = await Promise.all(
+    config.components.map(async (component) => {
+      const definition = indicatorCatalog.find((item) => item.slug === component.slug);
+      const componentYear = definition
+        ? clampYear(requestedYear, definition.yearMin ?? definition.defaultYear, definition.yearMax ?? definition.defaultYear)
+        : requestedYear;
+
+      const payload = await api.data({
+        indicator: component.slug,
+        level,
+        code,
+        year: componentYear,
+        limit: 20000,
+      });
+
+      const values = payload.items.map((item) => item.value).filter(Number.isFinite);
+      const min = values.length ? Math.min(...values) : 0;
+      const max = values.length ? Math.max(...values) : 0;
+      const span = max - min;
+
+      const normalizedMap = new Map(
+        payload.items.map((item) => [
+          item.code,
+          span > 0 ? (item.value - min) / span : 0.5,
+        ]),
+      );
+
+      return {
+        component,
+        normalizedMap,
+        rawItems: payload.items,
+      };
+    }),
+  );
+
+  const namesByCode = new Map<string, { name: string; level: TerritoryLevel }>();
+  const allCodes = new Set<string>();
+
+  componentPayloads.forEach((item) => {
+    item.rawItems.forEach((row) => {
+      allCodes.add(row.code);
+      if (!namesByCode.has(row.code)) {
+        namesByCode.set(row.code, { name: row.name, level: row.level });
+      }
+    });
+  });
+
+  const points: IndicatorPoint[] = Array.from(allCodes).map((territoryCode) => {
+    let weightedScore = 0;
+    let weightSum = 0;
+
+    componentPayloads.forEach((entry) => {
+      const baseValue = entry.normalizedMap.get(territoryCode) ?? 0.5;
+      const normalized = entry.component.direction === 'negative' ? 1 - baseValue : baseValue;
+      weightedScore += normalized * entry.component.weight;
+      weightSum += entry.component.weight;
+    });
+
+    const score = weightSum > 0 ? (weightedScore / weightSum) * 100 : 50;
+    const nameInfo = namesByCode.get(territoryCode);
+
+    return {
+      code: territoryCode,
+      name: nameInfo?.name ?? territoryCode,
+      level: nameInfo?.level ?? level,
+      year: requestedYear,
+      value: toSafeNumber(score),
+    };
+  });
+
+  const sorted = [...points].sort((a, b) => b.value - a.value);
+  const values = sorted.map((item) => item.value);
+  const total = values.reduce((sum, current) => sum + current, 0);
+
+  return {
+    indicator: slug,
+    level,
+    code: code ?? null,
+    year: requestedYear,
+    count: sorted.length,
+    stats: {
+      min: values.length ? Math.min(...values) : 0,
+      max: values.length ? Math.max(...values) : 0,
+      average: values.length ? total / values.length : 0,
+      total,
+    },
+    items: sorted,
+  };
+};
+
 const App = () => {
   const {
     indicator,
@@ -99,6 +314,7 @@ const App = () => {
     setFilter,
   } = useFilterStore();
 
+  const mapShellRef = useRef<HTMLElement | null>(null);
   const [indicators, setIndicators] = useState<IndicatorDefinition[]>([]);
   const [regions, setRegions] = useState<Territory[]>([]);
   const [allUfs, setAllUfs] = useState<Territory[]>([]);
@@ -109,6 +325,9 @@ const App = () => {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [themeMode, setThemeMode] = useState<ThemeMode>('institutional');
+  const [legendScaleMode, setLegendScaleMode] = useState<LegendScaleMode>('linear');
+  const [shareNotice, setShareNotice] = useState<string>('');
 
   const selectedIndicator = useMemo(
     () => indicators.find((item) => item.slug === indicator),
@@ -119,6 +338,63 @@ const App = () => {
   const yearMax = selectedIndicator?.yearMax ?? 2100;
   const yearDefault = selectedIndicator?.defaultYear ?? yearMax;
   const yearLocked = yearMin === yearMax;
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.body.setAttribute('data-theme-mode', themeMode);
+  }, [themeMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const query = new URLSearchParams(window.location.search);
+    const partial: Partial<{
+      indicator: string;
+      level: TerritoryLevel;
+      year: number;
+      regionCode: string;
+      ufCode: string;
+      municipalityCode: string;
+      search: string;
+      viewMode: ViewMode;
+    }> = {};
+
+    const indicatorParam = query.get('indicator');
+    if (indicatorParam) partial.indicator = indicatorParam;
+
+    const levelParam = query.get('level');
+    if (levelParam === 'REGIAO' || levelParam === 'UF' || levelParam === 'MUNICIPIO') {
+      partial.level = levelParam;
+    }
+
+    const yearParam = query.get('year');
+    if (yearParam && !Number.isNaN(Number(yearParam))) {
+      partial.year = Number(yearParam);
+    }
+
+    partial.regionCode = query.get('region') ?? '';
+    partial.ufCode = query.get('uf') ?? '';
+    partial.municipalityCode = query.get('municipio') ?? '';
+    partial.search = query.get('search') ?? '';
+
+    const viewParam = query.get('view');
+    if (viewParam === 'choropleth' || viewParam === 'bubbles' || viewParam === 'heatmap' || viewParam === 'clusters') {
+      partial.viewMode = viewParam;
+    }
+
+    if (Object.keys(partial).length) {
+      setFilter(partial);
+    }
+
+    const themeParam = query.get('theme');
+    if (themeParam === 'dark' || themeParam === 'institutional') {
+      setThemeMode(themeParam);
+    }
+
+    const legendParam = query.get('legend');
+    if (legendParam === 'linear' || legendParam === 'quartile' || legendParam === 'percentile') {
+      setLegendScaleMode(legendParam);
+    }
+  }, [setFilter]);
 
   useEffect(() => {
     let alive = true;
@@ -132,7 +408,7 @@ const App = () => {
         ]);
 
         if (!alive) return;
-        setIndicators(indicatorItems);
+        setIndicators(withSyntheticIndicators(indicatorItems));
         const sortedRegions = sortTerritoriesByName(regionItems);
         const sortedUfs = sortTerritoriesByName(ufItems);
         setRegions(sortedRegions);
@@ -231,6 +507,38 @@ const App = () => {
           ? ufCode || undefined
           : undefined;
 
+    if (selectedIndicator && isSyntheticIndicator(indicator)) {
+      const loadSyntheticData = async () => {
+        try {
+          const [geojson, syntheticData] = await Promise.all([
+            api.geojson({
+              level,
+              code: geojsonCode,
+              simplified: true,
+            }),
+            buildSyntheticData(indicator, level, year, dataCode, indicators),
+          ]);
+
+          if (!alive) return;
+          setGeojsonPayload(geojson);
+          setDataPayload(syntheticData);
+          setErrorMessage('');
+        } catch (error) {
+          if (!alive) return;
+          setErrorMessage(error instanceof Error ? error.message : 'Falha ao montar indice sintetico.');
+        } finally {
+          if (alive) {
+            setLoading(false);
+          }
+        }
+      };
+
+      loadSyntheticData();
+      return () => {
+        alive = false;
+      };
+    }
+
     if (selectedIndicator && !selectedIndicator.supported) {
       const loadGeoOnly = async () => {
         try {
@@ -296,7 +604,7 @@ const App = () => {
     return () => {
       alive = false;
     };
-  }, [indicator, level, year, regionCode, ufCode, municipalityCode, selectedIndicator]);
+  }, [indicator, level, year, regionCode, ufCode, municipalityCode, selectedIndicator, indicators]);
 
   const filteredPoints = useMemo(() => {
     if (!dataPayload) return [];
@@ -345,11 +653,85 @@ const App = () => {
     setSelectedCode(code);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams();
+    params.set('indicator', indicator);
+    params.set('level', level);
+    params.set('year', String(year));
+    if (regionCode) params.set('region', regionCode);
+    if (ufCode) params.set('uf', ufCode);
+    if (municipalityCode) params.set('municipio', municipalityCode);
+    if (search) params.set('search', search);
+    params.set('view', viewMode);
+    params.set('theme', themeMode);
+    params.set('legend', legendScaleMode);
+    const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+    window.history.replaceState(null, '', nextUrl);
+  }, [indicator, level, year, regionCode, ufCode, municipalityCode, search, viewMode, themeMode, legendScaleMode]);
+
+  const notifyShare = (message: string) => {
+    setShareNotice(message);
+    window.setTimeout(() => setShareNotice(''), 2400);
+  };
+
+  const handleShareFilters = async () => {
+    if (typeof window === 'undefined') return;
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      notifyShare('Link copiado com filtros aplicados.');
+    } catch {
+      notifyShare('Nao foi possivel copiar. Copie a URL manualmente.');
+    }
+  };
+
+  const handleExportCsv = () => {
+    const header = ['ranking', 'codigo', 'territorio', 'indicador', 'ano', 'valor', 'nivel'];
+    const rows = sortedPoints.map((item, index) => [
+      String(index + 1),
+      item.code,
+      `"${item.name.replace(/"/g, '""')}"`,
+      `"${indicatorLabelFrom(indicator, indicators).replace(/"/g, '""')}"`,
+      String(item.year),
+      item.value.toLocaleString('pt-BR', { maximumFractionDigits: 6 }).replace(/\./g, '').replace(',', '.'),
+      item.level,
+    ]);
+
+    const csvContent = [header.join(','), ...rows.map((row) => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `indicadores-${indicator}-${level}-${year}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrintPdf = () => {
+    window.print();
+  };
+
+  const toggleTheme = () => {
+    setThemeMode((current) => (current === 'institutional' ? 'dark' : 'institutional'));
+  };
+
+  const togglePresentationMode = async () => {
+    const root = mapShellRef.current;
+    if (!root) return;
+
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+
+    await root.requestFullscreen();
+  };
+
   return (
     <div className="app-shell">
       <PresentationSection />
 
-      <section id="mapa" className="map-shell">
+      <section id="mapa" className="map-shell" ref={mapShellRef}>
         <div className="map-shell-inner">
           <div className="map-governance">
             <div className="map-governance-inner">
@@ -360,6 +742,26 @@ const App = () => {
                 <a href="#governanca-lgpd">LGPD</a>
               </div>
             </div>
+            <div className="map-actions-row">
+              <button type="button" onClick={toggleTheme}>
+                {themeMode === 'institutional' ? 'Tema escuro' : 'Tema claro institucional'}
+              </button>
+              <button type="button" onClick={handleShareFilters}>Compartilhar filtros</button>
+              <button type="button" onClick={handleExportCsv}>Exportar CSV</button>
+              <button type="button" onClick={handlePrintPdf}>Exportar PDF</button>
+              <button type="button" onClick={togglePresentationMode}>Modo apresentacao</button>
+              <label className="map-actions-select">
+                Escala
+                <select value={legendScaleMode} onChange={(event) => setLegendScaleMode(event.target.value as LegendScaleMode)}>
+                  {Object.entries(legendScaleLabel).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {shareNotice ? <p className="map-share-notice">{shareNotice}</p> : null}
           </div>
 
           <header className="map-header">
@@ -512,6 +914,8 @@ const App = () => {
                 unit={indicatorUnitFrom(indicator, indicators)}
                 selectedCode={selectedCode}
                 onSelect={handleMapSelect}
+                legendScaleMode={legendScaleMode}
+                themeMode={themeMode}
               />
             </section>
 
@@ -522,6 +926,12 @@ const App = () => {
               indicatorSourceUrl={indicatorSourceUrlFrom(indicator, indicators)}
               unit={indicatorUnitFrom(indicator, indicators)}
               levelLabel={levelLabel[level]}
+              points={sortedPoints}
+              mapStats={mapStats}
+              indicatorSlug={indicator}
+              level={level}
+              year={year}
+              trendAvailable={!isSyntheticIndicator(indicator)}
             />
           </main>
 
@@ -531,6 +941,10 @@ const App = () => {
             unit={indicatorUnitFrom(indicator, indicators)}
             selectedCityCode={selectedCityCode}
             mapStats={mapStats}
+            points={sortedPoints}
+            levelLabel={levelLabel[level]}
+            indicatorSlug={indicator}
+            year={year}
           />
         </div>
       </section>

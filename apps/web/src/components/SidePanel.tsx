@@ -1,4 +1,6 @@
-import type { IndicatorPoint } from '../lib/types';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '../lib/api';
+import type { IndicatorPoint, TerritoryLevel } from '../lib/types';
 
 type SidePanelProps = {
   selected: IndicatorPoint | null;
@@ -7,6 +9,17 @@ type SidePanelProps = {
   indicatorSourceUrl?: string;
   unit: string;
   levelLabel: string;
+  points: IndicatorPoint[];
+  mapStats: {
+    min: number;
+    max: number;
+    average: number;
+    count: number;
+  } | null;
+  indicatorSlug: string;
+  level: TerritoryLevel;
+  year: number;
+  trendAvailable: boolean;
 };
 
 const formatValue = (value: number | null, unit: string): string => {
@@ -21,7 +34,69 @@ export const SidePanel = ({
   indicatorSourceUrl,
   unit,
   levelLabel,
+  points,
+  mapStats,
+  indicatorSlug,
+  level,
+  year,
+  trendAvailable,
 }: SidePanelProps) => {
+  const [previousValue, setPreviousValue] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!selected || !trendAvailable || year <= 1900) {
+      setPreviousValue(null);
+      return;
+    }
+
+    let alive = true;
+    const previousYear = year - 1;
+
+    const loadPrevious = async () => {
+      try {
+        const payload = await api.data({
+          indicator: indicatorSlug,
+          level,
+          code: selected.code,
+          year: previousYear,
+          limit: 1,
+        });
+
+        if (!alive) return;
+        const previous = payload.items.find((item) => item.code === selected.code) ?? payload.items[0] ?? null;
+        setPreviousValue(previous?.value ?? null);
+      } catch {
+        if (!alive) return;
+        setPreviousValue(null);
+      }
+    };
+
+    loadPrevious();
+
+    return () => {
+      alive = false;
+    };
+  }, [selected, indicatorSlug, level, year, trendAvailable]);
+
+  const rankingMap = useMemo(() => {
+    return new Map(
+      [...points]
+        .sort((a, b) => b.value - a.value)
+        .map((point, index) => [point.code, index + 1]),
+    );
+  }, [points]);
+
+  const selectedRank = selected ? rankingMap.get(selected.code) ?? null : null;
+  const average = mapStats?.average ?? null;
+  const diffPercent =
+    selected && average && average > 0
+      ? ((selected.value - average) / average) * 100
+      : null;
+  const trendPercent =
+    selected && previousValue && previousValue > 0
+      ? ((selected.value - previousValue) / previousValue) * 100
+      : null;
+
   return (
     <aside className="side-panel side-panel-metrics">
       <div className="panel-head">
@@ -56,6 +131,36 @@ export const SidePanel = ({
           <>
             <p className="panel-selected-name">{selected.name}</p>
             <p className="panel-value">{formatValue(selected.value, unit)}</p>
+            <div className="panel-insights">
+              <p>
+                <strong>Ranking:</strong>{' '}
+                {selectedRank ? `${selectedRank} de ${points.length}` : 'N/D'}
+              </p>
+              <p>
+                <strong>Comparativo medio:</strong>{' '}
+                {diffPercent === null
+                  ? 'N/D'
+                  : `${diffPercent >= 0 ? '+' : ''}${diffPercent.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`}
+              </p>
+              <p>
+                <strong>Situacao:</strong>{' '}
+                {diffPercent === null
+                  ? 'Sem media para comparacao.'
+                  : diffPercent >= 0
+                    ? 'Acima da media do recorte atual.'
+                    : 'Abaixo da media do recorte atual.'}
+              </p>
+              <p>
+                <strong>Tendencia historica:</strong>{' '}
+                {!trendAvailable || year <= 1900
+                  ? 'Nao disponivel para este indicador.'
+                  : trendPercent === null
+                    ? 'Sem base de ano anterior.'
+                    : `${trendPercent >= 0 ? 'Alta' : 'Queda'} de ${Math.abs(trendPercent).toLocaleString('pt-BR', {
+                        maximumFractionDigits: 1,
+                      })}% vs ${year - 1}.`}
+              </p>
+            </div>
           </>
         ) : (
           <p className="panel-empty">Selecione uma area no mapa para ver o valor da metrica.</p>

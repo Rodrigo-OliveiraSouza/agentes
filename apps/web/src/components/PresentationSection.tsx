@@ -142,11 +142,19 @@ export const PresentationSection = () => {
           <div className="presentation-links-row">
             <a
               className="presentation-link presentation-link-subtle"
-              href="https://www.gov.br/igualdaderacial/pt-br"
+              href="https://pnit.infinity.dev.br/"
               target="_blank"
               rel="noreferrer"
             >
-              Site institucional do ministerio
+              Plataforma de agentes
+            </a>
+            <a
+              className="presentation-link presentation-link-subtle"
+              href="https://plataformadiversifica.vercel.app/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Plataforma Diversifica
             </a>
             <span className="presentation-folder">Pasta do carrossel: `apps/web/src/assets/carousel`</span>
           </div>

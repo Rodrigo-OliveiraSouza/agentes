@@ -3,13 +3,13 @@ import logoPlataforma from '../assets/logos/logo-plataforma.svg';
 
 const footerLinks = [
   {
-    name: 'Ministerio da Igualdade Racial',
-    href: 'https://www.gov.br/igualdaderacial/pt-br',
+    name: 'Plataforma de Agentes',
+    href: 'https://pnit.infinity.dev.br/',
     logo: logoMinisterio,
   },
   {
-    name: 'Observatorio de Indicadores',
-    href: 'https://agentes-1sv.pages.dev',
+    name: 'Plataforma Diversifica',
+    href: 'https://plataformadiversifica.vercel.app/',
     logo: logoPlataforma,
   },
 ];

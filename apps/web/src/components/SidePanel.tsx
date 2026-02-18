@@ -34,6 +34,10 @@ const formatValue = (value: number | null, unit: string): string => {
   return `${value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${unit}`.trim();
 };
 
+const formatCompactValue = (value: number, unit: string): string => {
+  return `${value.toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })} ${unit}`.trim();
+};
+
 const defaultMetricKeys = (metrics: CityProfileMetric[], size: number): string[] => {
   return metrics
     .filter((metric) => metric.status !== 'unavailable')
@@ -163,25 +167,44 @@ export const SidePanel = ({
     ],
   };
 
-  const panelChartData = useMemo(() => {
-    if (!mapStats) return null;
+  const panelChartItems = useMemo(() => {
+    if (!mapStats) return [];
 
-    const labels = selected ? [selected.name, 'Media da area', 'Maximo da area'] : ['Media da area', 'Maximo da area'];
-    const data = selected ? [selected.value, mapStats.average, mapStats.max] : [mapStats.average, mapStats.max];
-    const colors = selected ? ['#0f62fe', '#5ba3f7', '#26a69a'] : ['#5ba3f7', '#26a69a'];
+    const rows = selected
+      ? [
+          { label: selected.name, rawValue: selected.value, color: '#0f62fe' },
+          { label: 'Media da area', rawValue: mapStats.average, color: '#5ba3f7' },
+          { label: 'Maximo da area', rawValue: mapStats.max, color: '#26a69a' },
+        ]
+      : [
+          { label: 'Media da area', rawValue: mapStats.average, color: '#5ba3f7' },
+          { label: 'Maximo da area', rawValue: mapStats.max, color: '#26a69a' },
+        ];
+
+    const maxValue = Math.max(...rows.map((row) => row.rawValue), 0);
+
+    return rows.map((row) => ({
+      ...row,
+      relativeValue: maxValue > 0 ? (row.rawValue / maxValue) * 100 : 0,
+      shortLabel: row.label.length > 26 ? `${row.label.slice(0, 26)}...` : row.label,
+    }));
+  }, [mapStats, selected]);
+
+  const panelChartData = useMemo(() => {
+    if (!panelChartItems.length) return null;
 
     return {
-      labels: labels.map((label) => (label.length > 26 ? `${label.slice(0, 26)}...` : label)),
+      labels: panelChartItems.map((item) => item.shortLabel),
       datasets: [
         {
-          label: indicatorLabel,
-          data,
-          backgroundColor: colors,
+          label: `${indicatorLabel} (comparativo relativo)`,
+          data: panelChartItems.map((item) => item.relativeValue),
+          backgroundColor: panelChartItems.map((item) => item.color),
           borderRadius: 7,
         },
       ],
     };
-  }, [mapStats, selected, indicatorLabel]);
+  }, [panelChartItems, indicatorLabel]);
 
   const toggleMetric = (key: string) => {
     setSelectedMetricKeys((current) => {
@@ -242,32 +265,45 @@ export const SidePanel = ({
       <section className="panel-card panel-chart panel-chart-compact">
         <h3>Grafico do painel</h3>
         {panelChartData ? (
-          <Bar
-            data={panelChartData}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  callbacks: {
-                    label: (context) => {
-                      const value = typeof context.parsed.y === 'number' ? context.parsed.y : 0;
-                      return `${value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${unit}`.trim();
+          <>
+            <div className="panel-chart-canvas panel-chart-canvas-compact">
+              <Bar
+                data={panelChartData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => {
+                          const row = panelChartItems[context.dataIndex];
+                          if (!row) return '';
+                          return `Relativo ${row.relativeValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% | ${formatValue(row.rawValue, unit)}`;
+                        },
+                      },
                     },
                   },
-                },
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  ticks: {
-                    callback: (value) => Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 }),
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      max: 100,
+                      ticks: {
+                        callback: (value) => `${value}%`,
+                      },
+                    },
                   },
-                },
-              },
-            }}
-          />
+                }}
+              />
+            </div>
+            <div className="panel-chart-summary">
+              {panelChartItems.map((item) => (
+                <p key={item.label}>
+                  <strong>{item.label}:</strong> {formatCompactValue(item.rawValue, unit)}
+                </p>
+              ))}
+            </div>
+          </>
         ) : (
           <p className="panel-empty">Sem dados suficientes para o grafico do painel.</p>
         )}
@@ -352,55 +388,57 @@ export const SidePanel = ({
           </select>
         </div>
         {chartMetrics.length ? (
-          <Bar
-            data={cityChartData}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              indexAxis: 'y',
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  callbacks: {
-                    title: (items) => {
-                      const index = items[0]?.dataIndex ?? 0;
-                      return cityChartItems[index]?.rawLabel ?? '';
+          <div className="panel-chart-canvas">
+            <Bar
+              data={cityChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      title: (items) => {
+                        const index = items[0]?.dataIndex ?? 0;
+                        return cityChartItems[index]?.rawLabel ?? '';
+                      },
+                      label: (context) => {
+                        const index = context.dataIndex;
+                        const row = cityChartItems[index];
+                        if (!row) return '';
+                        const parsedValue = typeof context.parsed.x === 'number' ? context.parsed.x : 0;
+                        if (cityChartMode === 'normalized') {
+                          return `Score ${parsedValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} | ${formatValue(row.rawValue, row.unit)}`;
+                        }
+                        return formatValue(row.rawValue, row.unit);
+                      },
                     },
-                    label: (context) => {
-                      const index = context.dataIndex;
-                      const row = cityChartItems[index];
-                      if (!row) return '';
-                      const parsedValue = typeof context.parsed.x === 'number' ? context.parsed.x : 0;
-                      if (cityChartMode === 'normalized') {
-                        return `Score ${parsedValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} | ${formatValue(row.rawValue, row.unit)}`;
+                  },
+                },
+                scales: {
+                  x: cityChartMode === 'normalized'
+                    ? {
+                        min: 0,
+                        max: 100,
+                        ticks: {
+                          callback: (value) => `${value}`,
+                        },
                       }
-                      return formatValue(row.rawValue, row.unit);
+                    : {
+                        ticks: {
+                          callback: (value) => Number(value).toLocaleString('pt-BR', { notation: 'compact' }),
+                        },
+                      },
+                  y: {
+                    ticks: {
+                      autoSkip: false,
                     },
                   },
                 },
-              },
-              scales: {
-                x: cityChartMode === 'normalized'
-                  ? {
-                      min: 0,
-                      max: 100,
-                      ticks: {
-                        callback: (value) => `${value}`,
-                      },
-                    }
-                  : {
-                      ticks: {
-                        callback: (value) => Number(value).toLocaleString('pt-BR', { notation: 'compact' }),
-                      },
-                    },
-                y: {
-                  ticks: {
-                    autoSkip: false,
-                  },
-                },
-              },
-            }}
-          />
+              }}
+            />
+          </div>
         ) : (
           <p className="panel-empty">Sem dados numericos selecionados.</p>
         )}

@@ -161,27 +161,6 @@ export const PresentationSection = () => {
               </article>
             ))}
           </div>
-
-          <div id="metodologia" className="presentation-pillars">
-            <p className="presentation-pillar-title">Metodologia de leitura territorial</p>
-            <p className="presentation-pillar-item">Dados oficiais do IBGE com conectores publicos complementares.</p>
-            <p className="presentation-pillar-item">Normalizacao por codigos territoriais e validacao de faixa/periodo.</p>
-            <p className="presentation-pillar-item">Cache serverless e snapshots para estabilidade operacional.</p>
-          </div>
-
-          <div id="governanca" className="presentation-governance">
-            <p className="presentation-pillar-title">Governanca e conformidade</p>
-            <p id="governanca-acessibilidade" className="presentation-pillar-item">
-              Acessibilidade: navegacao por teclado, contraste e foco em leitura de dados publicos.
-            </p>
-            <p id="governanca-politica-dados" className="presentation-pillar-item">
-              Politica de Dados: rastreabilidade de fonte e periodicidade de atualizacao.
-            </p>
-            <p id="governanca-lgpd" className="presentation-pillar-item">
-              LGPD: tratamento de dados agregados e nao identificaveis.
-            </p>
-            <p className="presentation-pillar-item">Ultima atualizacao de referencia: {lastDataUpdate}.</p>
-          </div>
         </div>
 
         <div className="presentation-carousel">
@@ -216,6 +195,29 @@ export const PresentationSection = () => {
               ))}
             </div>
           ) : null}
+        </div>
+      </div>
+
+      <div className="presentation-post-grid">
+        <div id="metodologia" className="presentation-pillars">
+          <p className="presentation-pillar-title">Metodologia de leitura territorial</p>
+          <p className="presentation-pillar-item">Dados oficiais do IBGE com conectores publicos complementares.</p>
+          <p className="presentation-pillar-item">Normalizacao por codigos territoriais e validacao de faixa/periodo.</p>
+          <p className="presentation-pillar-item">Cache serverless e snapshots para estabilidade operacional.</p>
+        </div>
+
+        <div id="governanca" className="presentation-governance">
+          <p className="presentation-pillar-title">Governanca e conformidade</p>
+          <p id="governanca-acessibilidade" className="presentation-pillar-item">
+            Acessibilidade: navegacao por teclado, contraste e foco em leitura de dados publicos.
+          </p>
+          <p id="governanca-politica-dados" className="presentation-pillar-item">
+            Politica de Dados: rastreabilidade de fonte e periodicidade de atualizacao.
+          </p>
+          <p id="governanca-lgpd" className="presentation-pillar-item">
+            LGPD: tratamento de dados agregados e nao identificaveis.
+          </p>
+          <p className="presentation-pillar-item">Ultima atualizacao de referencia: {lastDataUpdate}.</p>
         </div>
       </div>
     </section>

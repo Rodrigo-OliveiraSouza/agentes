@@ -31,6 +31,15 @@ const indicatorUnitFrom = (slug: string, indicators: IndicatorDefinition[]): str
   return indicators.find((item) => item.slug === slug)?.unit ?? '';
 };
 
+const indicatorSourceFrom = (slug: string, indicators: IndicatorDefinition[]): string => {
+  const indicator = indicators.find((item) => item.slug === slug);
+  return indicator?.sourceLabel ?? indicator?.source ?? 'Fonte nao informada';
+};
+
+const indicatorSourceUrlFrom = (slug: string, indicators: IndicatorDefinition[]): string | undefined => {
+  return indicators.find((item) => item.slug === slug)?.sourceUrl;
+};
+
 const buildRequestCode = (level: TerritoryLevel, ufCode: string, municipalityCode: string): string | undefined => {
   if (level === 'MUNICIPIO') {
     if (municipalityCode) {
@@ -226,7 +235,8 @@ const App = () => {
           if (!alive) return;
           setGeojsonPayload(geojson);
           setDataPayload(null);
-          setErrorMessage(`Indicador "${selectedIndicator.label}" em desenvolvimento.`);
+          const sourceText = selectedIndicator.sourceLabel ?? selectedIndicator.source;
+          setErrorMessage(`Indicador "${selectedIndicator.label}" em desenvolvimento. Fonte prevista: ${sourceText}.`);
         } catch (error) {
           if (!alive) return;
           setErrorMessage(error instanceof Error ? error.message : 'Falha ao carregar dados do mapa.');
@@ -336,6 +346,7 @@ const App = () => {
               {indicators.map((item) => (
                 <option key={item.slug} value={item.slug}>
                   {item.label}
+                  {item.sourceLabel ? ` - ${item.sourceLabel}` : ''}
                   {!item.supported ? ' (em breve)' : ''}
                 </option>
               ))}
@@ -463,6 +474,8 @@ const App = () => {
           <SidePanel
             selected={selectedPoint}
             indicatorLabel={indicatorLabelFrom(indicator, indicators)}
+            indicatorSource={indicatorSourceFrom(indicator, indicators)}
+            indicatorSourceUrl={indicatorSourceUrlFrom(indicator, indicators)}
             unit={indicatorUnitFrom(indicator, indicators)}
             levelLabel={levelLabel[level]}
             selectedCityCode={selectedCityCode}

@@ -15,6 +15,8 @@ export type IndicatorDefinition = {
   label: string;
   unit: string;
   source: string;
+  sourceLabel?: string;
+  sourceUrl?: string;
   supported: boolean;
   yearMin?: number;
   yearMax?: number;

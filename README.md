@@ -220,6 +220,17 @@ npm run prisma:migrate
 - Indicadores principais ativos no mapa (IBGE): **População residente**, **PIB a preços correntes**, **Densidade demográfica**, **Taxa de alfabetização** e **Cobertura de rede de esgoto**.
 - IDH e criminalidade permanecem como conectores plugáveis.
 
+## Fontes de dados e conectores
+
+- `IBGE API` (principal): `https://servicodados.ibge.gov.br/api/docs/`
+- `Portal gov.br Conecta` (catálogo): `https://www.gov.br/conecta/catalogo/apis/api-portal-de-dados-abertos`
+- `dados.gov.br` (datasets abertos): `https://dados.gov.br`
+- `API Segurança Pública (terceiros)` (opcional): `https://github.com/rayonnunes/api_seguranca_publica`
+- `Portais estaduais` (exemplo SP): `https://dadosabertos.sp.gov.br`
+- `Atlas da Violência (IPEA)` (homicídios): `https://www.ipea.gov.br/atlasviolencia/`
+- `DataViva` (socioeconômico): `https://dataviva.info`
+- `BrasilAPI` (territorial auxiliar): `https://brasilapi.com.br`
+
 ## Roadmap
 
 1. Expandir conectores com série histórica adicional (mais variáveis SIDRA/IBGE).

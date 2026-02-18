@@ -16,6 +16,8 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 type SidePanelProps = {
   selected: IndicatorPoint | null;
   indicatorLabel: string;
+  indicatorSource: string;
+  indicatorSourceUrl?: string;
   unit: string;
   levelLabel: string;
   selectedCityCode: string | null;
@@ -33,7 +35,15 @@ const defaultMetricKeys = (metrics: CityProfileMetric[], size: number): string[]
     .map((metric) => metric.key);
 };
 
-export const SidePanel = ({ selected, indicatorLabel, unit, levelLabel, selectedCityCode }: SidePanelProps) => {
+export const SidePanel = ({
+  selected,
+  indicatorLabel,
+  indicatorSource,
+  indicatorSourceUrl,
+  unit,
+  levelLabel,
+  selectedCityCode,
+}: SidePanelProps) => {
   const [profile, setProfile] = useState<CityProfileResponse | null>(null);
   const [profileError, setProfileError] = useState<string>('');
   const [profileLoading, setProfileLoading] = useState(false);
@@ -142,6 +152,16 @@ export const SidePanel = ({ selected, indicatorLabel, unit, levelLabel, selected
       <div className="panel-block">
         <p className="panel-label">Indicador do mapa</p>
         <p>{indicatorLabel}</p>
+        <p className="panel-label">Fonte</p>
+        {indicatorSourceUrl ? (
+          <p>
+            <a href={indicatorSourceUrl} target="_blank" rel="noreferrer">
+              {indicatorSource}
+            </a>
+          </p>
+        ) : (
+          <p>{indicatorSource}</p>
+        )}
       </div>
 
       <div className="panel-block">
@@ -207,6 +227,7 @@ export const SidePanel = ({ selected, indicatorLabel, unit, levelLabel, selected
                 <tr>
                   <th>Indice</th>
                   <th>Valor</th>
+                  <th>Fonte</th>
                   <th>Ano</th>
                   <th>Status</th>
                 </tr>
@@ -216,6 +237,7 @@ export const SidePanel = ({ selected, indicatorLabel, unit, levelLabel, selected
                   <tr key={metric.key}>
                     <td>{metric.label}</td>
                     <td>{formatValue(metric.value, metric.unit)}</td>
+                    <td>{metric.source}</td>
                     <td>{metric.year ?? 'N/D'}</td>
                     <td>{metric.status}</td>
                   </tr>

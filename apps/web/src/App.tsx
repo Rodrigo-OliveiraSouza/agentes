@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MapCanvas } from './components/MapCanvas';
 import { SidePanel } from './components/SidePanel';
 import { PresentationSection } from './components/PresentationSection';
@@ -309,6 +309,10 @@ const App = () => {
     return null;
   }, [level, selectedCode, municipalityCode]);
 
+  const handleMapSelect = useCallback((code: string) => {
+    setSelectedCode(code);
+  }, []);
+
   return (
     <div className="app-shell">
       <PresentationSection />
@@ -452,7 +456,7 @@ const App = () => {
               points={sortedPoints}
               mode={viewMode}
               selectedCode={selectedCode}
-              onSelect={(code) => setSelectedCode(code)}
+              onSelect={handleMapSelect}
             />
           </section>
 

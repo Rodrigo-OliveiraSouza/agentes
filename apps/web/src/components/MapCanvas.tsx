@@ -26,6 +26,9 @@ const containerStyle: React.CSSProperties = {
   height: '100%',
 };
 
+const initialCenter = { lat: -14.2, lng: -51.9 };
+const initialZoom = 4;
+
 const mapOptions: google.maps.MapOptions = {
   disableDefaultUI: false,
   zoomControl: true,
@@ -246,8 +249,8 @@ export const MapCanvas = ({ geojson, points, mode, selectedCode, onSelect }: Map
   return (
     <GoogleMap
       mapContainerStyle={containerStyle}
-      center={{ lat: -14.2, lng: -51.9 }}
-      zoom={4}
+      center={initialCenter}
+      zoom={initialZoom}
       options={mapOptions}
       onLoad={(map) => {
         mapRef.current = map;

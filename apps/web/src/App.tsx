@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MapCanvas } from './components/MapCanvas';
 import { SidePanel } from './components/SidePanel';
+import { MetricsChartsPanel } from './components/MetricsChartsPanel';
 import { PresentationSection } from './components/PresentationSection';
 import { SiteFooter } from './components/SiteFooter';
 import { api } from './lib/api';
@@ -500,10 +501,16 @@ const App = () => {
             indicatorSourceUrl={indicatorSourceUrlFrom(indicator, indicators)}
             unit={indicatorUnitFrom(indicator, indicators)}
             levelLabel={levelLabel[level]}
-            selectedCityCode={selectedCityCode}
-            mapStats={mapStats}
           />
         </main>
+
+        <MetricsChartsPanel
+          selected={selectedPoint}
+          indicatorLabel={indicatorLabelFrom(indicator, indicators)}
+          unit={indicatorUnitFrom(indicator, indicators)}
+          selectedCityCode={selectedCityCode}
+          mapStats={mapStats}
+        />
       </section>
 
       <SiteFooter />

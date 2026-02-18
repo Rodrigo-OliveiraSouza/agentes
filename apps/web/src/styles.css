@@ -373,6 +373,10 @@ body,
   gap: 10px;
 }
 
+.side-panel-metrics {
+  align-self: stretch;
+}
+
 .side-panel h2,
 .side-panel h3 {
   margin: 0;
@@ -611,6 +615,38 @@ body,
   color: #8a5700;
 }
 
+.bottom-charts {
+  padding: 14px;
+  border-top: 1px solid #d0d7de;
+  background: #edf3f8;
+}
+
+.bottom-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.bottom-wide {
+  grid-column: 1 / -1;
+}
+
+.bottom-charts .panel-chart-compact {
+  min-height: 290px;
+  height: auto;
+  max-height: none;
+}
+
+.bottom-charts .panel-chart-canvas-compact {
+  min-height: 220px;
+  height: 220px;
+  max-height: 220px;
+}
+
+.bottom-charts .panel-chart-summary {
+  max-height: 76px;
+}
+
 .site-footer {
   background: var(--mir-ink);
   color: #f4f7fb;
@@ -690,6 +726,14 @@ body,
   .footer-logo-links img {
     width: 150px;
   }
+
+  .bottom-charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-wide {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 520px) {
@@ -715,6 +759,22 @@ body,
     min-height: 136px;
     height: 136px;
     max-height: 136px;
+  }
+
+  .bottom-charts {
+    padding: 10px;
+  }
+
+  .bottom-charts .panel-chart-compact {
+    min-height: 250px;
+    height: auto;
+    max-height: none;
+  }
+
+  .bottom-charts .panel-chart-canvas-compact {
+    min-height: 180px;
+    height: 180px;
+    max-height: 180px;
   }
 
   .panel-chart-head {

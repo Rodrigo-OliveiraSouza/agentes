@@ -22,6 +22,11 @@ const levelLabel: Record<TerritoryLevel, string> = {
 };
 
 const modeOptions: ViewMode[] = ['choropleth', 'bubbles', 'heatmap', 'clusters'];
+const territoryCollator = new Intl.Collator('pt-BR', { sensitivity: 'base' });
+
+const sortTerritoriesByName = (items: Territory[]): Territory[] => {
+  return [...items].sort((a, b) => territoryCollator.compare(a.name, b.name));
+};
 
 const indicatorLabelFrom = (slug: string, indicators: IndicatorDefinition[]): string => {
   return indicators.find((item) => item.slug === slug)?.label ?? slug;
@@ -127,9 +132,11 @@ const App = () => {
 
         if (!alive) return;
         setIndicators(indicatorItems);
-        setRegions(regionItems);
-        setAllUfs(ufItems);
-        setUfs(ufItems);
+        const sortedRegions = sortTerritoriesByName(regionItems);
+        const sortedUfs = sortTerritoriesByName(ufItems);
+        setRegions(sortedRegions);
+        setAllUfs(sortedUfs);
+        setUfs(sortedUfs);
       } catch (error) {
         if (!alive) return;
         setErrorMessage(error instanceof Error ? error.message : 'Falha ao carregar filtros iniciais.');
@@ -187,7 +194,7 @@ const App = () => {
       try {
         const result = await api.territories('MUNICIPIO', ufCode);
         if (!alive) return;
-        setMunicipalities(result);
+        setMunicipalities(sortTerritoriesByName(result));
       } catch (error) {
         if (!alive) return;
         setErrorMessage(error instanceof Error ? error.message : 'Falha ao carregar municipios.');

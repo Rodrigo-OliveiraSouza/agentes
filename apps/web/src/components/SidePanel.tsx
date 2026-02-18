@@ -3,6 +3,7 @@ import {
   BarElement,
   CategoryScale,
   Chart as ChartJS,
+  type ChartOptions,
   Legend,
   LinearScale,
   Tooltip,
@@ -151,6 +152,26 @@ export const SidePanel = ({
     }));
   }, [chartMetrics, topSize]);
 
+  const cityRawRange = useMemo(() => {
+    const values = cityChartItems
+      .map((item) => item.rawValue)
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    if (values.length < 2) {
+      return { min: 0, max: 0, ratio: 1 };
+    }
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    return {
+      min,
+      max,
+      ratio: min > 0 ? max / min : 1,
+    };
+  }, [cityChartItems]);
+
+  const shouldUseLogScale = cityChartMode === 'raw' && cityRawRange.min > 0 && cityRawRange.ratio >= 1000;
+
   const cityChartData = {
     labels: cityChartItems.map((item) => item.label),
     datasets: [
@@ -205,6 +226,97 @@ export const SidePanel = ({
       ],
     };
   }, [panelChartItems, indicatorLabel]);
+
+  const panelChartOptions = useMemo<ChartOptions<'bar'>>(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      resizeDelay: 120,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const row = panelChartItems[context.dataIndex];
+              if (!row) return '';
+              return `Relativo ${row.relativeValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% | ${formatValue(row.rawValue, unit)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            callback: (value) => `${value}%`,
+          },
+        },
+      },
+    }),
+    [panelChartItems, unit],
+  );
+
+  const cityChartOptions = useMemo<ChartOptions<'bar'>>(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      resizeDelay: 120,
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const index = items[0]?.dataIndex ?? 0;
+              return cityChartItems[index]?.rawLabel ?? '';
+            },
+            label: (context) => {
+              const index = context.dataIndex;
+              const row = cityChartItems[index];
+              if (!row) return '';
+              const parsedValue = typeof context.parsed.x === 'number' ? context.parsed.x : 0;
+              if (cityChartMode === 'normalized') {
+                return `Score ${parsedValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} | ${formatValue(row.rawValue, row.unit)}`;
+              }
+              return formatValue(row.rawValue, row.unit);
+            },
+          },
+        },
+      },
+      scales: {
+        x:
+          cityChartMode === 'normalized'
+            ? {
+                min: 0,
+                max: 100,
+                ticks: {
+                  callback: (value) => `${value}`,
+                },
+              }
+            : shouldUseLogScale
+              ? {
+                  type: 'logarithmic',
+                  ticks: {
+                    callback: (value) => Number(value).toLocaleString('pt-BR', { notation: 'compact' }),
+                  },
+                }
+              : {
+                  ticks: {
+                    callback: (value) => Number(value).toLocaleString('pt-BR', { notation: 'compact' }),
+                  },
+                },
+        y: {
+          ticks: {
+            autoSkip: false,
+          },
+        },
+      },
+    }),
+    [cityChartItems, cityChartMode, shouldUseLogScale],
+  );
 
   const toggleMetric = (key: string) => {
     setSelectedMetricKeys((current) => {
@@ -269,31 +381,7 @@ export const SidePanel = ({
             <div className="panel-chart-canvas panel-chart-canvas-compact">
               <Bar
                 data={panelChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) => {
-                          const row = panelChartItems[context.dataIndex];
-                          if (!row) return '';
-                          return `Relativo ${row.relativeValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% | ${formatValue(row.rawValue, unit)}`;
-                        },
-                      },
-                    },
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      max: 100,
-                      ticks: {
-                        callback: (value) => `${value}%`,
-                      },
-                    },
-                  },
-                }}
+                options={panelChartOptions}
               />
             </div>
             <div className="panel-chart-summary">
@@ -389,55 +477,7 @@ export const SidePanel = ({
         </div>
         {chartMetrics.length ? (
           <div className="panel-chart-canvas">
-            <Bar
-              data={cityChartData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    callbacks: {
-                      title: (items) => {
-                        const index = items[0]?.dataIndex ?? 0;
-                        return cityChartItems[index]?.rawLabel ?? '';
-                      },
-                      label: (context) => {
-                        const index = context.dataIndex;
-                        const row = cityChartItems[index];
-                        if (!row) return '';
-                        const parsedValue = typeof context.parsed.x === 'number' ? context.parsed.x : 0;
-                        if (cityChartMode === 'normalized') {
-                          return `Score ${parsedValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} | ${formatValue(row.rawValue, row.unit)}`;
-                        }
-                        return formatValue(row.rawValue, row.unit);
-                      },
-                    },
-                  },
-                },
-                scales: {
-                  x: cityChartMode === 'normalized'
-                    ? {
-                        min: 0,
-                        max: 100,
-                        ticks: {
-                          callback: (value) => `${value}`,
-                        },
-                      }
-                    : {
-                        ticks: {
-                          callback: (value) => Number(value).toLocaleString('pt-BR', { notation: 'compact' }),
-                        },
-                      },
-                  y: {
-                    ticks: {
-                      autoSkip: false,
-                    },
-                  },
-                },
-              }}
-            />
+            <Bar data={cityChartData} options={cityChartOptions} />
           </div>
         ) : (
           <p className="panel-empty">Sem dados numericos selecionados.</p>

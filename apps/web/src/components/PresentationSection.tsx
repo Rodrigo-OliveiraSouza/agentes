@@ -5,6 +5,13 @@ type Slide = {
   alt: string;
 };
 
+type SlideMeta = {
+  title: string;
+  text: string;
+  href: string;
+  cta: string;
+};
+
 const carouselModules = import.meta.glob('../assets/carousel/*.{png,jpg,jpeg,webp,avif,svg}', {
   eager: true,
   import: 'default',
@@ -22,33 +29,49 @@ const carouselSlides: Slide[] = Object.entries(carouselModules)
     };
   });
 
-const features = [
+const slideMeta: SlideMeta[] = [
   {
-    title: 'Sobre o observatorio',
-    text: 'Plataforma para leitura territorial de desigualdades e monitoramento de indicadores sociais.',
+    title: 'Camadas e filtros',
+    text: 'Navegue por indicador, ano e nivel territorial com visualizacao em camadas.',
+    href: '#mapa',
+    cta: 'Abrir filtros',
   },
   {
-    title: 'Como usar',
-    text: 'Escolha indicador, nivel territorial e ano para comparar municipios, UFs e regioes.',
+    title: 'Comparacao territorial',
+    text: 'Compare municipios, UFs e regioes para apoiar diagnosticos e priorizacao de acoes.',
+    href: '#mapa',
+    cta: 'Comparar territorios',
   },
   {
-    title: 'Transparencia',
-    text: 'Cada indicador mostra a fonte de origem (IBGE e conectores publicos complementares).',
+    title: 'Exportacao de dados',
+    text: 'Consolide leitura do painel e use os indicadores em relatorios tecnicos.',
+    href: '#metodologia',
+    cta: 'Ver metodologia',
+  },
+  {
+    title: 'Transparencia das fontes',
+    text: 'Cada metrica informa origem e abrangencia para auditoria e rastreabilidade.',
+    href: '#governanca',
+    cta: 'Conferir governanca',
   },
 ];
 
-const institutionPillars = [
-  'Equidade racial em politicas publicas',
-  'Acesso transparente a indicadores territoriais',
-  'Evidencias para tomada de decisao local',
+const workflowGroups = [
+  {
+    title: '1) O que voce pode fazer',
+    items: ['Comparar municipios e regioes', 'Visualizar desigualdades territoriais', 'Gerar relatorios para politicas publicas'],
+  },
+  {
+    title: '2) Como funciona',
+    items: ['Escolha o indicador principal', 'Selecione territorio e ano', 'Analise mapa, painel e graficos'],
+  },
+  {
+    title: '3) Fontes e metodologia',
+    items: ['IBGE como fonte principal', 'Bases publicas complementares plugaveis', 'Atualizacao periodica com cache e snapshots'],
+  },
 ];
 
-const palette = [
-  { name: 'Verde institucional', color: '#136c3a' },
-  { name: 'Dourado cidadania', color: '#f3b61f' },
-  { name: 'Terracota diversidade', color: '#b64b2b' },
-  { name: 'Azul dados publicos', color: '#1f5a94' },
-];
+const lastDataUpdate = '18/02/2026';
 
 export const PresentationSection = () => {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -59,7 +82,7 @@ export const PresentationSection = () => {
 
     const timer = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % carouselSlides.length);
-    }, 5000);
+    }, 5200);
 
     return () => window.clearInterval(timer);
   }, []);
@@ -75,22 +98,29 @@ export const PresentationSection = () => {
     return carouselSlides[activeIndex] ?? carouselSlides[0];
   }, [activeIndex, hasSlides]);
 
-  const prevSlide = () => {
-    if (carouselSlides.length <= 1) return;
-    setActiveIndex((current) => (current - 1 + carouselSlides.length) % carouselSlides.length);
-  };
-
-  const nextSlide = () => {
-    if (carouselSlides.length <= 1) return;
-    setActiveIndex((current) => (current + 1) % carouselSlides.length);
-  };
+  const currentMeta = slideMeta[activeIndex % slideMeta.length];
 
   return (
     <section className="presentation-section">
+      <div className="gov-strip">
+        <div className="gov-strip-inner">
+          <p>gov.br | Ministerio da Igualdade Racial</p>
+          <div className="gov-strip-links">
+            <a href="#governanca-acessibilidade">Acessibilidade</a>
+            <a href="#governanca-politica-dados">Politica de Dados</a>
+            <a href="#governanca-lgpd">LGPD</a>
+            <span>Ultima atualizacao: {lastDataUpdate}</span>
+          </div>
+        </div>
+      </div>
+
       <div className="presentation-grid">
         <div className="presentation-copy">
           <p className="presentation-kicker">Ministerio da Igualdade Racial</p>
           <h1>Observatorio territorial de indicadores para equidade racial</h1>
+          <p className="presentation-benefit">
+            Consulte indicadores por municipio, compare territorios e gere analises para politicas publicas.
+          </p>
           <p className="presentation-text">
             Esta plataforma reune dados geograficos e socioeconomicos para apoiar diagnostico territorial, monitorar
             desigualdades e orientar politicas publicas com foco em igualdade racial.
@@ -101,11 +131,17 @@ export const PresentationSection = () => {
           </p>
 
           <div className="presentation-actions">
-            <a className="presentation-button" href="#mapa">
-              Entrar no painel de mapas
+            <a className="presentation-button presentation-button-primary" href="#mapa">
+              Acessar mapa interativo
             </a>
+            <a className="presentation-button presentation-button-secondary" href="#metodologia">
+              Ver metodologia
+            </a>
+          </div>
+
+          <div className="presentation-links-row">
             <a
-              className="presentation-link"
+              className="presentation-link presentation-link-subtle"
               href="https://www.gov.br/igualdaderacial/pt-br"
               target="_blank"
               rel="noreferrer"
@@ -116,54 +152,55 @@ export const PresentationSection = () => {
           </div>
 
           <div className="presentation-features">
-            {features.map((item) => (
+            {workflowGroups.map((item) => (
               <article key={item.title} className="feature-card">
                 <h3>{item.title}</h3>
-                <p>{item.text}</p>
+                {item.items.map((bullet) => (
+                  <p key={bullet}>{bullet}</p>
+                ))}
               </article>
             ))}
           </div>
 
-          <div className="presentation-pillars">
-            <p className="presentation-pillar-title">Compromissos da instituicao</p>
-            {institutionPillars.map((pillar) => (
-              <p key={pillar} className="presentation-pillar-item">
-                {pillar}
-              </p>
-            ))}
+          <div id="metodologia" className="presentation-pillars">
+            <p className="presentation-pillar-title">Metodologia de leitura territorial</p>
+            <p className="presentation-pillar-item">Dados oficiais do IBGE com conectores publicos complementares.</p>
+            <p className="presentation-pillar-item">Normalizacao por codigos territoriais e validacao de faixa/periodo.</p>
+            <p className="presentation-pillar-item">Cache serverless e snapshots para estabilidade operacional.</p>
           </div>
 
-          <div className="presentation-palette">
-            <p className="presentation-pillar-title">Paleta institucional aplicada</p>
-            <div className="palette-grid">
-              {palette.map((item) => (
-                <div key={item.name} className="palette-card">
-                  <span className="palette-color" style={{ background: item.color }} />
-                  <span>{item.name}</span>
-                </div>
-              ))}
-            </div>
+          <div id="governanca" className="presentation-governance">
+            <p className="presentation-pillar-title">Governanca e conformidade</p>
+            <p id="governanca-acessibilidade" className="presentation-pillar-item">
+              Acessibilidade: navegacao por teclado, contraste e foco em leitura de dados publicos.
+            </p>
+            <p id="governanca-politica-dados" className="presentation-pillar-item">
+              Politica de Dados: rastreabilidade de fonte e periodicidade de atualizacao.
+            </p>
+            <p id="governanca-lgpd" className="presentation-pillar-item">
+              LGPD: tratamento de dados agregados e nao identificaveis.
+            </p>
+            <p className="presentation-pillar-item">Ultima atualizacao de referencia: {lastDataUpdate}.</p>
           </div>
         </div>
 
         <div className="presentation-carousel">
           <div className="carousel-frame">
-            {currentSlide ? (
-              <img src={currentSlide.src} alt={currentSlide.alt} />
+            {currentSlide && currentMeta ? (
+              <a className="carousel-slide-link" href={currentMeta.href}>
+                <img src={currentSlide.src} alt={currentSlide.alt} />
+                <div className="carousel-overlay">
+                  <p className="carousel-tag">Slide {activeIndex + 1}</p>
+                  <h3>{currentMeta.title}</h3>
+                  <p>{currentMeta.text}</p>
+                  <span>{currentMeta.cta}</span>
+                </div>
+              </a>
             ) : (
               <div className="carousel-empty">
                 <p>Adicione imagens na pasta do carrossel para exibir os slides.</p>
               </div>
             )}
-
-            <div className="carousel-controls">
-              <button type="button" onClick={prevSlide} disabled={carouselSlides.length <= 1}>
-                Anterior
-              </button>
-              <button type="button" onClick={nextSlide} disabled={carouselSlides.length <= 1}>
-                Proximo
-              </button>
-            </div>
           </div>
 
           {carouselSlides.length > 1 ? (

@@ -14,11 +14,27 @@ const footerLinks = [
   },
 ];
 
+const policyLinks = [
+  { label: 'Acessibilidade', href: '#governanca-acessibilidade' },
+  { label: 'Politica de Dados', href: '#governanca-politica-dados' },
+  { label: 'LGPD', href: '#governanca-lgpd' },
+];
+
 export const SiteFooter = () => {
   return (
     <footer className="site-footer">
       <div className="footer-inner">
-        <p>Ministerio da Igualdade Racial | Plataforma de indicadores territoriais com dados publicos.</p>
+        <div className="footer-text-block">
+          <p>Ministerio da Igualdade Racial | Plataforma de indicadores territoriais com dados publicos.</p>
+          <div className="footer-policy-links">
+            {policyLinks.map((item) => (
+              <a key={item.label} href={item.href}>
+                {item.label}
+              </a>
+            ))}
+            <span>Atualizacao de referencia: 18/02/2026</span>
+          </div>
+        </div>
         <div className="footer-logo-links">
           {footerLinks.map((item) => (
             <a key={item.name} href={item.href} target="_blank" rel="noreferrer" aria-label={item.name}>

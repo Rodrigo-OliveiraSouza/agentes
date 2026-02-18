@@ -1105,7 +1105,21 @@ export const fetchIndicatorData = async (
         PRIMARY_CARE_CLASSIFICATIONS,
       );
     case 'crime_rate': {
-      const countRows = await fetchAggregateSeries({
+      if (level === 'MUNICIPIO') {
+        const ufCode = code && code.length >= 2 ? code.slice(0, 2) : undefined;
+        const ufRows = await fetchAggregateSeries({
+          level: 'UF',
+          year,
+          code: ufCode,
+          aggregateId: ROBBERY_AGGREGATE,
+          variableId: ROBBERY_COUNT_VARIABLE,
+          classificationQuery: ROBBERY_CLASSIFICATIONS,
+        });
+        const normalizedUfRows = await normalizeCountByPopulation(ufRows, 'UF', ufCode);
+        return expandUfPointsToMunicipios(normalizedUfRows, year, code);
+      }
+
+      const rows = await fetchAggregateSeries({
         level,
         year,
         code,
@@ -1113,10 +1127,24 @@ export const fetchIndicatorData = async (
         variableId: ROBBERY_COUNT_VARIABLE,
         classificationQuery: ROBBERY_CLASSIFICATIONS,
       });
-      return normalizeCountByPopulation(countRows, level, code);
+      return normalizeCountByPopulation(rows, level, code);
     }
     case 'robbery_rate': {
-      const countRows = await fetchAggregateSeries({
+      if (level === 'MUNICIPIO') {
+        const ufCode = code && code.length >= 2 ? code.slice(0, 2) : undefined;
+        const ufRows = await fetchAggregateSeries({
+          level: 'UF',
+          year,
+          code: ufCode,
+          aggregateId: ROBBERY_HOUSEHOLD_AGGREGATE,
+          variableId: ROBBERY_HOUSEHOLD_COUNT_VARIABLE,
+          classificationQuery: ROBBERY_HOUSEHOLD_CLASSIFICATIONS,
+        });
+        const normalizedUfRows = await normalizeCountByPopulation(ufRows, 'UF', ufCode);
+        return expandUfPointsToMunicipios(normalizedUfRows, year, code);
+      }
+
+      const rows = await fetchAggregateSeries({
         level,
         year,
         code,
@@ -1124,7 +1152,7 @@ export const fetchIndicatorData = async (
         variableId: ROBBERY_HOUSEHOLD_COUNT_VARIABLE,
         classificationQuery: ROBBERY_HOUSEHOLD_CLASSIFICATIONS,
       });
-      return normalizeCountByPopulation(countRows, level, code);
+      return normalizeCountByPopulation(rows, level, code);
     }
     case 'idh':
       return fetchIdhProxy(level, code);

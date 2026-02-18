@@ -55,7 +55,7 @@ dataRoute.get('/', zValidator('query', querySchema), async (c) => {
   return cachedJson(
     c,
     'data',
-    { indicator: indicatorSlug, level, code, year: effectiveYear, search, limit },
+    { indicator: indicatorSlug, level, code, year: effectiveYear, search, limit, schemaVersion: '2026-02-18-v2' },
     async () => {
       const points = await fetchIndicatorData(indicatorSlug, level as TerritoryLevel, effectiveYear, code);
       const normalizedSearch = search?.trim().toLowerCase();

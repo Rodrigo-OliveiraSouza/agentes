@@ -53,10 +53,29 @@ const colorFor = (value: number, min: number, max: number): string => {
   return `hsl(${Math.round(hue)}, 88%, ${Math.round(lightness)}%)`;
 };
 
+const heatmapColorFor = (value: number, min: number, max: number): string => {
+  if (max <= min) return 'hsl(214, 85%, 48%)';
+  const ratio = clamp((value - min) / (max - min), 0, 1);
+  const lightness = 95 - ratio * 66;
+  return `hsl(214, 85%, ${Math.round(lightness)}%)`;
+};
+
 const areaOpacityFor = (mode: ViewMode): number => {
   if (mode === 'choropleth') return 0.82;
-  if (mode === 'heatmap') return 0.22;
+  if (mode === 'heatmap') return 0.92;
   return 0.12;
+};
+
+const heatmapOpacityForZoom = (zoom: number): number => {
+  return clamp(0.86 + (zoom - 4) * 0.02, 0.86, 0.96);
+};
+
+const boundaryWeightFor = (mode: ViewMode, zoom: number, isSelected: boolean): number => {
+  if (isSelected) return 2.2;
+  if (mode === 'heatmap') {
+    return clamp(1.15 - (zoom - 4) * 0.07, 0.45, 1.15);
+  }
+  return 0.8;
 };
 
 const radiusFor = (value: number, max: number, zoom: number): number => {
@@ -64,22 +83,6 @@ const radiusFor = (value: number, max: number, zoom: number): number => {
   const normalized = Math.sqrt(value / max);
   const zoomScale = clamp(1 - (zoom - 4) * 0.08, 0.35, 1);
   return (7000 + normalized * 32000) * zoomScale;
-};
-
-const heatWeightFor = (value: number, min: number, max: number): number => {
-  if (max <= min) return 50;
-  const normalized = clamp((value - min) / (max - min), 0, 1);
-  return 15 + Math.pow(normalized, 0.65) * 85;
-};
-
-const heatRadiusForZoom = (zoom: number): number => {
-  if (zoom <= 4) return 38;
-  if (zoom <= 5) return 34;
-  if (zoom <= 6) return 30;
-  if (zoom <= 7) return 26;
-  if (zoom <= 8) return 22;
-  if (zoom <= 9) return 18;
-  return 14;
 };
 
 export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect }: MapCanvasProps) => {
@@ -96,7 +99,6 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
   const circleValuesRef = useRef<number[]>([]);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const clusterRef = useRef<MarkerClusterer | null>(null);
-  const heatmapRef = useRef<google.maps.visualization.HeatmapLayer | null>(null);
 
   const values = useMemo(() => points.map((point) => point.value), [points]);
   const min = useMemo(() => (values.length ? Math.min(...values) : 0), [values]);
@@ -152,9 +154,6 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
     clusterRef.current?.clearMarkers();
     clusterRef.current = null;
 
-    heatmapRef.current?.setMap(null);
-    heatmapRef.current = null;
-
     map.data.forEach((feature) => {
       map.data.remove(feature);
     });
@@ -170,12 +169,15 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
       const point = pointsByCode.get(code);
       const value = point?.value ?? 0;
       const isSelected = selectedCode === code;
+      const fillColor = mode === 'heatmap' ? heatmapColorFor(value, min, max) : colorFor(value, min, max);
+      const fillOpacity = mode === 'heatmap' ? heatmapOpacityForZoom(currentZoom) : areaOpacityFor(mode);
 
       return {
-        fillColor: colorFor(value, min, max),
-        fillOpacity: areaOpacityFor(mode),
-        strokeColor: isSelected ? '#e74c3c' : '#4e5d6c',
-        strokeWeight: isSelected ? 2.2 : 0.8,
+        fillColor,
+        fillOpacity,
+        strokeColor: isSelected ? '#e74c3c' : mode === 'heatmap' ? '#16324f' : '#4e5d6c',
+        strokeWeight: boundaryWeightFor(mode, currentZoom, isSelected),
+        strokeOpacity: mode === 'heatmap' ? 0.88 : 0.78,
         visible: true,
       };
     });
@@ -223,27 +225,9 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
       });
     }
 
-    if (mode === 'heatmap' && google.maps.visualization) {
-      heatmapRef.current = new google.maps.visualization.HeatmapLayer({
-        data: centroidPoints.map((item) => ({
-          location: new google.maps.LatLng(item.lat, item.lng),
-          weight: heatWeightFor(item.value, min, max),
-        })),
-        radius: heatRadiusForZoom(currentZoom),
-        maxIntensity: 100,
-        opacity: 0.78,
-        dissipating: true,
-      });
-
-      heatmapRef.current.setMap(map);
-    }
-  }, [geojson, pointsByCode, selectedCode, onSelect, mode, min, max, centroidPoints]);
+  }, [geojson, pointsByCode, selectedCode, onSelect, mode, min, max, centroidPoints, currentZoom]);
 
   useEffect(() => {
-    if (mode === 'heatmap' && heatmapRef.current) {
-      heatmapRef.current.set('radius', heatRadiusForZoom(currentZoom));
-    }
-
     if (mode === 'bubbles' && circlesRef.current.length) {
       circlesRef.current.forEach((circle, index) => {
         const value = circleValuesRef.current[index] ?? 0;
@@ -251,6 +235,14 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
       });
     }
   }, [mode, currentZoom, max]);
+
+  const legendGradient = useMemo(() => {
+    if (mode === 'heatmap') {
+      return 'linear-gradient(90deg, hsl(214, 85%, 95%), hsl(214, 85%, 78%), hsl(214, 85%, 55%), hsl(214, 85%, 30%))';
+    }
+
+    return 'linear-gradient(90deg, hsl(210, 88%, 84%), hsl(145, 88%, 60%), hsl(60, 88%, 54%), hsl(20, 88%, 45%))';
+  }, [mode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -323,8 +315,10 @@ export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect 
 
       {values.length ? (
         <div className="map-legend">
-          <p className="map-legend-title">Escala do indicador</p>
-          <div className="map-legend-gradient" />
+          <p className="map-legend-title">
+            {mode === 'heatmap' ? 'Escala de calor por territorio' : 'Escala do indicador'}
+          </p>
+          <div className="map-legend-gradient" style={{ background: legendGradient }} />
           <div className="map-legend-row">
             <span>Min {min.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
             <span>Media {average.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>

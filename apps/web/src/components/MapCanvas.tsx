@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import { centroid } from '@turf/turf';
@@ -9,6 +9,7 @@ type MapCanvasProps = {
   geojson: FeatureCollection | null;
   points: IndicatorPoint[];
   mode: ViewMode;
+  unit: string;
   selectedCode: string | null;
   onSelect: (code: string) => void;
 };
@@ -40,22 +41,48 @@ const mapOptions: google.maps.MapOptions = {
 
 const mapLibraries: 'visualization'[] = ['visualization'];
 
-const colorFor = (value: number, min: number, max: number): string => {
-  if (max <= min) return '#70a1ff';
-  const ratio = (value - min) / (max - min);
-  const r = Math.round(45 + ratio * 160);
-  const g = Math.round(130 - ratio * 80);
-  const b = Math.round(210 - ratio * 140);
-  return `rgb(${r}, ${g}, ${b})`;
+const clamp = (value: number, min: number, max: number): number => {
+  return Math.min(max, Math.max(min, value));
 };
 
-const radiusFor = (value: number, max: number): number => {
+const colorFor = (value: number, min: number, max: number): string => {
+  if (max <= min) return 'hsl(200, 86%, 62%)';
+  const ratio = clamp((value - min) / (max - min), 0, 1);
+  const hue = 210 - ratio * 190;
+  const lightness = 84 - ratio * 44;
+  return `hsl(${Math.round(hue)}, 88%, ${Math.round(lightness)}%)`;
+};
+
+const areaOpacityFor = (mode: ViewMode): number => {
+  if (mode === 'choropleth') return 0.82;
+  if (mode === 'heatmap') return 0.22;
+  return 0.12;
+};
+
+const radiusFor = (value: number, max: number, zoom: number): number => {
   if (max <= 0) return 8000;
   const normalized = Math.sqrt(value / max);
-  return 8000 + normalized * 35000;
+  const zoomScale = clamp(1 - (zoom - 4) * 0.08, 0.35, 1);
+  return (7000 + normalized * 32000) * zoomScale;
 };
 
-export const MapCanvas = ({ geojson, points, mode, selectedCode, onSelect }: MapCanvasProps) => {
+const heatWeightFor = (value: number, min: number, max: number): number => {
+  if (max <= min) return 50;
+  const normalized = clamp((value - min) / (max - min), 0, 1);
+  return 15 + Math.pow(normalized, 0.65) * 85;
+};
+
+const heatRadiusForZoom = (zoom: number): number => {
+  if (zoom <= 4) return 38;
+  if (zoom <= 5) return 34;
+  if (zoom <= 6) return 30;
+  if (zoom <= 7) return 26;
+  if (zoom <= 8) return 22;
+  if (zoom <= 9) return 18;
+  return 14;
+};
+
+export const MapCanvas = ({ geojson, points, mode, unit, selectedCode, onSelect }: MapCanvasProps) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
@@ -63,8 +90,10 @@ export const MapCanvas = ({ geojson, points, mode, selectedCode, onSelect }: Map
     id: 'ibge-map-loader',
   });
 
+  const [currentZoom, setCurrentZoom] = useState<number>(initialZoom);
   const mapRef = useRef<google.maps.Map | null>(null);
   const circlesRef = useRef<google.maps.Circle[]>([]);
+  const circleValuesRef = useRef<number[]>([]);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const clusterRef = useRef<MarkerClusterer | null>(null);
   const heatmapRef = useRef<google.maps.visualization.HeatmapLayer | null>(null);
@@ -72,6 +101,15 @@ export const MapCanvas = ({ geojson, points, mode, selectedCode, onSelect }: Map
   const values = useMemo(() => points.map((point) => point.value), [points]);
   const min = useMemo(() => (values.length ? Math.min(...values) : 0), [values]);
   const max = useMemo(() => (values.length ? Math.max(...values) : 0), [values]);
+  const average = useMemo(
+    () => (values.length ? values.reduce((acc, value) => acc + value, 0) / values.length : 0),
+    [values],
+  );
+
+  const selectedValue = useMemo(() => {
+    if (!selectedCode) return null;
+    return points.find((point) => point.code === selectedCode)?.value ?? null;
+  }, [selectedCode, points]);
 
   const pointsByCode = useMemo(() => {
     return new Map(points.map((point) => [point.code, point]));
@@ -106,6 +144,7 @@ export const MapCanvas = ({ geojson, points, mode, selectedCode, onSelect }: Map
 
     circlesRef.current.forEach((circle) => circle.setMap(null));
     circlesRef.current = [];
+    circleValuesRef.current = [];
 
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
@@ -134,7 +173,7 @@ export const MapCanvas = ({ geojson, points, mode, selectedCode, onSelect }: Map
 
       return {
         fillColor: colorFor(value, min, max),
-        fillOpacity: mode === 'choropleth' ? 0.75 : 0.05,
+        fillOpacity: areaOpacityFor(mode),
         strokeColor: isSelected ? '#e74c3c' : '#4e5d6c',
         strokeWeight: isSelected ? 2.2 : 0.8,
         visible: true,
@@ -149,15 +188,16 @@ export const MapCanvas = ({ geojson, points, mode, selectedCode, onSelect }: Map
     });
 
     if (mode === 'bubbles') {
+      circleValuesRef.current = centroidPoints.map((item) => item.value);
       circlesRef.current = centroidPoints.map((item) => {
         const circle = new google.maps.Circle({
           map,
           center: { lat: item.lat, lng: item.lng },
-          radius: radiusFor(item.value, max),
+          radius: radiusFor(item.value, max, currentZoom),
           fillColor: '#2ed573',
-          fillOpacity: 0.25,
+          fillOpacity: 0.34,
           strokeColor: '#1eae60',
-          strokeOpacity: 0.7,
+          strokeOpacity: 0.85,
           strokeWeight: 1,
         });
 
@@ -187,14 +227,30 @@ export const MapCanvas = ({ geojson, points, mode, selectedCode, onSelect }: Map
       heatmapRef.current = new google.maps.visualization.HeatmapLayer({
         data: centroidPoints.map((item) => ({
           location: new google.maps.LatLng(item.lat, item.lng),
-          weight: item.value,
+          weight: heatWeightFor(item.value, min, max),
         })),
-        radius: 26,
+        radius: heatRadiusForZoom(currentZoom),
+        maxIntensity: 100,
+        opacity: 0.78,
+        dissipating: true,
       });
 
       heatmapRef.current.setMap(map);
     }
   }, [geojson, pointsByCode, selectedCode, onSelect, mode, min, max, centroidPoints]);
+
+  useEffect(() => {
+    if (mode === 'heatmap' && heatmapRef.current) {
+      heatmapRef.current.set('radius', heatRadiusForZoom(currentZoom));
+    }
+
+    if (mode === 'bubbles' && circlesRef.current.length) {
+      circlesRef.current.forEach((circle, index) => {
+        const value = circleValuesRef.current[index] ?? 0;
+        circle.setRadius(radiusFor(value, max, currentZoom));
+      });
+    }
+  }, [mode, currentZoom, max]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -247,15 +303,45 @@ export const MapCanvas = ({ geojson, points, mode, selectedCode, onSelect }: Map
   }
 
   return (
-    <GoogleMap
-      mapContainerStyle={containerStyle}
-      center={initialCenter}
-      zoom={initialZoom}
-      options={mapOptions}
-      onLoad={(map) => {
-        mapRef.current = map;
-      }}
-    />
+    <div className="map-canvas-shell">
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={initialCenter}
+        zoom={initialZoom}
+        options={mapOptions}
+        onLoad={(map) => {
+          mapRef.current = map;
+          setCurrentZoom(map.getZoom() ?? initialZoom);
+        }}
+        onZoomChanged={() => {
+          const zoom = mapRef.current?.getZoom();
+          if (typeof zoom === 'number') {
+            setCurrentZoom((previous) => (previous === zoom ? previous : zoom));
+          }
+        }}
+      />
+
+      {values.length ? (
+        <div className="map-legend">
+          <p className="map-legend-title">Escala do indicador</p>
+          <div className="map-legend-gradient" />
+          <div className="map-legend-row">
+            <span>Min {min.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+            <span>Media {average.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+            <span>Max {max.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+          </div>
+          <div className="map-legend-row">
+            <span>Zoom {currentZoom}</span>
+            <span>
+              Selecionado:{' '}
+              {selectedValue === null
+                ? 'N/D'
+                : `${selectedValue.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${unit}`.trim()}
+            </span>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 };
 

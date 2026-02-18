@@ -466,6 +466,7 @@ const App = () => {
               geojson={geojsonPayload?.geojson ?? null}
               points={sortedPoints}
               mode={viewMode}
+              unit={indicatorUnitFrom(indicator, indicators)}
               selectedCode={selectedCode}
               onSelect={handleMapSelect}
             />

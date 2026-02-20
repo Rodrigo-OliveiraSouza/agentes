@@ -81,6 +81,7 @@ export const LandingPage = () => {
   const [geojsonPayload, setGeojsonPayload] = useState<GeoJsonResponse | null>(null);
   const [points, setPoints] = useState<IndicatorPoint[]>([]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [newsQuery, setNewsQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -140,7 +141,6 @@ export const LandingPage = () => {
     const preferred = activeThemeDefinition.indicators
       .map((slug) => indicatorsBySlug.get(slug))
       .filter((item): item is IndicatorDefinition => Boolean(item));
-
     if (preferred.length) return preferred;
     return catalog.slice(0, 4);
   }, [activeThemeDefinition, indicatorsBySlug, catalog]);
@@ -165,7 +165,7 @@ export const LandingPage = () => {
     setError('');
     setSelectedCode(null);
 
-    const loadMiniMap = async () => {
+    const loadThemeMap = async () => {
       try {
         const [geojson, data] = await Promise.all([
           api.geojson({ level: 'UF', simplified: true }),
@@ -182,15 +182,13 @@ export const LandingPage = () => {
         setPoints([...data.items].sort((a, b) => b.value - a.value));
       } catch (loadError) {
         if (!alive) return;
-        setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar mini mapa.');
+        setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar mapa tematico.');
       } finally {
-        if (alive) {
-          setLoading(false);
-        }
+        if (alive) setLoading(false);
       }
     };
 
-    loadMiniMap();
+    loadThemeMap();
     return () => {
       alive = false;
     };
@@ -202,11 +200,22 @@ export const LandingPage = () => {
   }, [points, selectedCode]);
 
   const newsByRecency = useMemo(() => [...content.news].sort((a, b) => (a.date < b.date ? 1 : -1)), [content.news]);
-  const featuredNews = newsByRecency[0] ?? null;
-  const secondaryNews = newsByRecency.slice(1, 3);
-  const reactionHighlights = newsByRecency.slice(0, 4);
-  const feedNews = newsByRecency.slice(0, 9);
-  const mediaItems = content.mediaItems.slice(0, 12);
+
+  const filteredNews = useMemo(() => {
+    const term = newsQuery.trim().toLowerCase();
+    if (!term) return newsByRecency;
+    return newsByRecency.filter((item) =>
+      [item.title, item.summary, item.reaction, item.date].join(' ').toLowerCase().includes(term),
+    );
+  }, [newsByRecency, newsQuery]);
+
+  const featuredNews = filteredNews[0] ?? null;
+  const feedNews = filteredNews.slice(0, 9);
+  const featuredVideo = content.mediaItems.find((item) => item.type === 'video') ?? null;
+  const featuredVideoLink = featuredVideo ? toValidLink(featuredVideo.youtubeUrl || featuredVideo.link) : '';
+  const featuredVideoIsExternal = featuredVideo ? isExternalLink(featuredVideoLink) : false;
+  const featuredVideoId = featuredVideo ? extractYouTubeVideoId(featuredVideo.youtubeUrl || featuredVideo.link) : null;
+  const supportMaterials = content.mediaItems.filter((item) => item.type !== 'video').slice(0, 8);
 
   const currentSlide = content.carousel[activeSlide] ?? content.carousel[0];
   const currentSlideLink = currentSlide
@@ -216,53 +225,88 @@ export const LandingPage = () => {
   const currentSlideVideoId = currentSlide ? extractYouTubeVideoId(currentSlide.youtubeUrl || currentSlide.link) : null;
 
   return (
-    <div className="landing-shell">
-      <section className="landing-hero">
-        <div className="landing-hero-inner">
-          <div className="landing-copy">
-            <p className="landing-kicker">Portal Territorial</p>
-            <h1>{content.projectName}</h1>
-            <p className="landing-subtitle">{content.institutionTagline}</p>
-            <p className="landing-text">
-              Painel de noticias e analise por tema do Projeto Luiza Barros. Explore politica, economia, saude,
-              educacao, seguranca e infraestrutura com mapas de indicadores atualizados.
-            </p>
-            <div className="landing-actions">
-              <a href="/mapas" className="landing-btn landing-btn-primary">
-                Abrir pagina de mapas
-              </a>
-              <a href="https://pnit.infinity.dev.br/" target="_blank" rel="noreferrer" className="landing-btn landing-btn-secondary">
-                Plataforma de agentes
-              </a>
-              <a href="https://plataformadiversifica.vercel.app/" target="_blank" rel="noreferrer" className="landing-btn landing-btn-secondary">
-                Plataforma Diversifica
-              </a>
-            </div>
+    <div className="portal-shell">
+      <header className="portal-header">
+        <div className="portal-header-inner">
+          <p className="portal-kicker">Projeto Luiza Barros</p>
+          <h1>Portal de Noticias e Inteligencia Territorial</h1>
+          <p>
+            Plataforma institucional para acompanhar noticias, reacoes e indicadores territoriais em politica, economia,
+            saude, educacao, seguranca e infraestrutura.
+          </p>
+          <div className="portal-header-actions">
+            <a href="/mapas" className="portal-btn portal-btn-primary" target="_blank" rel="noreferrer">
+              Abrir mapa completo com todos os filtros
+            </a>
+            <a href="https://pnit.infinity.dev.br/" className="portal-btn portal-btn-secondary" target="_blank" rel="noreferrer">
+              Plataforma de agentes
+            </a>
+            <a
+              href="https://plataformadiversifica.vercel.app/"
+              className="portal-btn portal-btn-secondary"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Plataforma Diversifica
+            </a>
           </div>
+          <p className="portal-updated">Atualizado em: {formatDateLabel(content.updatedAt)}</p>
+        </div>
+      </header>
 
-          <div className="landing-carousel">
+      <nav className="portal-nav">
+        <div className="portal-nav-inner">
+          <a href="/" className="portal-nav-home">
+            Inicio
+          </a>
+          {THEME_MAPS.map((theme) => (
+            <button
+              key={theme.key}
+              type="button"
+              className={theme.key === activeTheme ? 'active' : ''}
+              onClick={() => setActiveTheme(theme.key)}
+            >
+              {theme.label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <section className="portal-search-section">
+        <div className="portal-search-inner">
+          <label htmlFor="portal-news-search">Buscar noticias e reacoes</label>
+          <input
+            id="portal-news-search"
+            value={newsQuery}
+            onChange={(event) => setNewsQuery(event.target.value)}
+            placeholder="Digite um termo para filtrar noticias..."
+          />
+        </div>
+      </section>
+
+      <section className="portal-highlight-section">
+        <div className="portal-highlight-inner">
+          <div className="portal-carousel">
             {currentSlide ? (
               <a
                 href={currentSlideLink}
-                className="landing-carousel-item"
+                className="portal-carousel-link"
                 target={currentSlideIsExternal ? '_blank' : undefined}
                 rel={currentSlideIsExternal ? 'noreferrer' : undefined}
               >
                 <img src={currentSlide.imageUrl} alt={currentSlide.title} />
-                <div className="landing-carousel-overlay">
-                  <p className="landing-kicker">Destaque</p>
-                  <h3>{currentSlide.title}</h3>
+                <div className="portal-carousel-overlay">
+                  <p>Destaque principal</p>
+                  <h2>{currentSlide.title}</h2>
                   <p>{currentSlide.summary}</p>
-                  {currentSlide.mediaType === 'youtube' && currentSlideVideoId ? (
-                    <span className="landing-carousel-badge">Video no YouTube</span>
-                  ) : null}
+                  {currentSlide.mediaType === 'youtube' && currentSlideVideoId ? <span>Video no YouTube</span> : null}
                 </div>
               </a>
             ) : (
-              <div className="landing-carousel-empty">Nenhuma imagem cadastrada.</div>
+              <div className="portal-carousel-empty">Nenhum slide disponivel.</div>
             )}
             {content.carousel.length > 1 ? (
-              <div className="landing-dots">
+              <div className="portal-carousel-dots">
                 {content.carousel.map((item, index) => (
                   <button
                     key={item.id}
@@ -275,25 +319,12 @@ export const LandingPage = () => {
               </div>
             ) : null}
           </div>
-        </div>
-      </section>
 
-      <section className="news-showcase">
-        <div className="news-showcase-inner">
-          <div className="news-showcase-head">
-            <div>
-              <h2>Noticias e reacoes em destaque</h2>
-              <p>Atualizacao de conteudo: {content.updatedAt}</p>
-            </div>
-            <a href="/mapas" className="news-showcase-link">
-              Abrir analise completa no mapa
-            </a>
-          </div>
-
-          <div className="news-main-grid">
+          <div className="portal-featured-news">
+            <h2>Noticia em destaque</h2>
             {featuredNews ? (
-              <article className="news-lead-card">
-                <p className="news-lead-date">{formatDateLabel(featuredNews.date)}</p>
+              <article>
+                <p className="portal-news-date">{formatDateLabel(featuredNews.date)}</p>
                 <h3>{featuredNews.title}</h3>
                 <p>{featuredNews.summary}</p>
                 <blockquote>{featuredNews.reaction}</blockquote>
@@ -302,109 +333,129 @@ export const LandingPage = () => {
                   target={isExternalLink(featuredNews.link) ? '_blank' : undefined}
                   rel={isExternalLink(featuredNews.link) ? 'noreferrer' : undefined}
                 >
-                  Ler destaque
+                  Ler noticia completa
                 </a>
               </article>
             ) : (
-              <div className="news-lead-empty">Nenhuma noticia cadastrada.</div>
+              <p className="portal-empty-text">Nenhuma noticia encontrada para o filtro atual.</p>
             )}
-
-            <div className="news-side-list">
-              {secondaryNews.map((item, index) => (
-                <article key={item.id} className={`news-side-card news-side-card-tone-${(index % 2) + 1}`}>
-                  <p className="news-date">{formatDateLabel(item.date)}</p>
-                  <h3>{item.title}</h3>
-                  <p>{item.summary}</p>
-                  <a
-                    href={toValidLink(item.link)}
-                    target={isExternalLink(item.link) ? '_blank' : undefined}
-                    rel={isExternalLink(item.link) ? 'noreferrer' : undefined}
-                  >
-                    Abrir noticia
-                  </a>
-                </article>
-              ))}
-              {!secondaryNews.length ? <div className="news-side-empty">Adicione mais noticias para ampliar o destaque.</div> : null}
-            </div>
-          </div>
-
-          {reactionHighlights.length ? (
-            <div className="reaction-grid">
-              {reactionHighlights.map((item, index) => (
-                <article key={`${item.id}-reaction`} className={`reaction-card reaction-card-tone-${(index % 4) + 1}`}>
-                  <p className="reaction-kicker">Reacao da comunidade</p>
-                  <p className="reaction-text">{item.reaction}</p>
-                  <a
-                    href={toValidLink(item.link)}
-                    target={isExternalLink(item.link) ? '_blank' : undefined}
-                    rel={isExternalLink(item.link) ? 'noreferrer' : undefined}
-                  >
-                    {item.title}
-                  </a>
-                </article>
-              ))}
-            </div>
-          ) : null}
-
-          <div className="news-feed-grid">
-            {feedNews.map((item, index) => (
-              <article key={`${item.id}-feed`} className={`news-feed-card news-feed-tone-${(index % 3) + 1}`}>
-                <p className="news-date">{formatDateLabel(item.date)}</p>
-                <h3>{item.title}</h3>
-                <p>{item.summary}</p>
-                <a
-                  href={toValidLink(item.link)}
-                  target={isExternalLink(item.link) ? '_blank' : undefined}
-                  rel={isExternalLink(item.link) ? 'noreferrer' : undefined}
-                >
-                  Detalhes
-                </a>
-              </article>
-            ))}
           </div>
         </div>
       </section>
 
-      <section className="media-hub-section">
-        <div className="media-hub-inner">
-          <div className="media-hub-head">
-            <h2>Midias e materiais</h2>
-            <p>Area para fotos, videos, folders e comunicados editaveis no painel admin.</p>
+      <section className="portal-video-section">
+        <div className="portal-video-inner">
+          <div>
+            <h2>Video em destaque</h2>
+            <p>
+              Conteudo audiovisual conectado ao projeto. O video permanece no YouTube e aqui exibimos apenas referencia
+              e acesso.
+            </p>
+          </div>
+          {featuredVideo && featuredVideoId ? (
+            <div className="portal-video-grid">
+              <div className="portal-video-frame">
+                <iframe
+                  src={`https://www.youtube.com/embed/${featuredVideoId}`}
+                  title={featuredVideo.title}
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+              <article className="portal-video-card">
+                <p className="portal-news-date">Material audiovisual</p>
+                <h3>{featuredVideo.title}</h3>
+                <p>{featuredVideo.description}</p>
+                <a href={featuredVideoLink} target={featuredVideoIsExternal ? '_blank' : undefined} rel="noreferrer">
+                  Abrir no YouTube
+                </a>
+              </article>
+            </div>
+          ) : (
+            <p className="portal-empty-text">Nenhum video cadastrado no painel admin.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="portal-theme-map-section">
+        <div className="portal-theme-map-inner">
+          <div className="portal-theme-map-head">
+            <div>
+              <h2>Mapa tematico: {activeThemeDefinition.label}</h2>
+              <p>{activeThemeDefinition.description}</p>
+            </div>
+            <a href="/mapas" className="portal-map-link" target="_blank" rel="noreferrer">
+              Ir para mapa completo
+            </a>
           </div>
 
-          <div className="media-hub-grid">
-            {mediaItems.map((item) => {
-              const rawLink = item.type === 'video' ? item.youtubeUrl || item.link : item.link;
-              const hasLink = Boolean(rawLink.trim());
-              const href = toValidLink(rawLink);
-              const external = isExternalLink(href);
-              const typeLabel =
-                item.type === 'photo'
-                  ? 'Foto'
-                  : item.type === 'video'
-                    ? 'Video'
-                    : item.type === 'folder'
-                      ? 'Folder'
-                      : 'Texto';
+          <div className="portal-indicator-tabs">
+            {themeIndicatorOptions.map((item) => (
+              <button
+                key={item.slug}
+                type="button"
+                className={item.slug === activeThemeIndicator ? 'active' : ''}
+                onClick={() => setActiveThemeIndicator(item.slug)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
 
+          {error ? <div className="error-banner">{error}</div> : null}
+          {loading ? <div className="loading-banner">Carregando mapa tematico...</div> : null}
+
+          <div className="portal-theme-map-canvas">
+            <MapCanvas
+              geojson={geojsonPayload?.geojson ?? null}
+              points={points}
+              mode="choropleth"
+              unit={selectedThemeIndicator?.unit ?? ''}
+              selectedCode={selectedCode}
+              onSelect={setSelectedCode}
+              legendScaleMode="linear"
+              themeMode="institutional"
+            />
+          </div>
+
+          <div className="portal-theme-map-summary">
+            <p>
+              <strong>Tema:</strong> {activeThemeDefinition.label}
+            </p>
+            <p>
+              <strong>Indice:</strong> {selectedThemeIndicator?.label ?? 'N/D'} ({selectedYear})
+            </p>
+            <p>
+              <strong>Selecionado:</strong>{' '}
+              {selectedPoint
+                ? `${selectedPoint.name} - ${selectedPoint.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${selectedThemeIndicator?.unit ?? ''}`
+                : 'Clique em uma UF no mapa'}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="portal-news-section">
+        <div className="portal-news-inner">
+          <h2>Ultimas noticias</h2>
+          <div className="portal-news-grid">
+            {feedNews.map((item, index) => {
+              const fallbackImage = content.carousel[index % content.carousel.length]?.imageUrl;
               return (
-                <article key={item.id} className={`media-card media-card-${item.type}`}>
-                  {item.type !== 'text' && item.imageUrl ? (
-                    <div className="media-card-cover">
-                      <img src={item.imageUrl} alt={item.title} />
-                      {item.type === 'video' ? <span>YouTube</span> : null}
-                    </div>
-                  ) : null}
-
-                  <div className="media-card-body">
-                    <p className="media-card-kicker">{typeLabel}</p>
+                <article key={item.id} className="portal-news-card">
+                  {fallbackImage ? <img src={fallbackImage} alt={item.title} /> : null}
+                  <div>
+                    <p className="portal-news-date">{formatDateLabel(item.date)}</p>
                     <h3>{item.title}</h3>
-                    <p>{item.description}</p>
-                    {hasLink ? (
-                      <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined}>
-                        {item.type === 'video' ? 'Abrir video' : item.type === 'folder' ? 'Abrir folder' : 'Abrir material'}
-                      </a>
-                    ) : null}
+                    <p>{item.summary}</p>
+                    <a
+                      href={toValidLink(item.link)}
+                      target={isExternalLink(item.link) ? '_blank' : undefined}
+                      rel={isExternalLink(item.link) ? 'noreferrer' : undefined}
+                    >
+                      Ler mais
+                    </a>
                   </div>
                 </article>
               );
@@ -413,75 +464,31 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section className="mini-map-section">
-        <div className="mini-map-head">
-          <div>
-            <h2>Mapas por tema</h2>
-            <p>{activeThemeDefinition.description}</p>
+      <section className="portal-materials-section">
+        <div className="portal-materials-inner">
+          <h2>Fotos, folders e comunicados</h2>
+          <div className="portal-materials-grid">
+            {supportMaterials.map((item) => {
+              const href = toValidLink(item.link);
+              const external = isExternalLink(href);
+              const typeLabel = item.type === 'photo' ? 'Foto' : item.type === 'folder' ? 'Folder' : 'Texto';
+              return (
+                <article key={item.id} className={`portal-material-card portal-material-${item.type}`}>
+                  {item.type !== 'text' && item.imageUrl ? <img src={item.imageUrl} alt={item.title} /> : null}
+                  <div>
+                    <p className="portal-material-kicker">{typeLabel}</p>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                    {item.link.trim() ? (
+                      <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined}>
+                        Abrir material
+                      </a>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
           </div>
-          <a href="/mapas" className="mini-map-complete-link" target="_blank" rel="noreferrer">
-            Abrir mapa completo com todos os filtros
-          </a>
-        </div>
-
-        <div className="theme-tabs" role="tablist" aria-label="Temas de analise">
-          {THEME_MAPS.map((theme) => (
-            <button
-              key={theme.key}
-              type="button"
-              className={theme.key === activeTheme ? 'active' : ''}
-              onClick={() => setActiveTheme(theme.key)}
-            >
-              {theme.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="theme-indicator-row">
-          {themeIndicatorOptions.map((item) => (
-            <button
-              key={item.slug}
-              type="button"
-              className={item.slug === activeThemeIndicator ? 'active' : ''}
-              onClick={() => setActiveThemeIndicator(item.slug)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {error ? <div className="error-banner">{error}</div> : null}
-        {loading ? <div className="loading-banner">Carregando mini mapa...</div> : null}
-
-        <div className="mini-map-canvas">
-          <MapCanvas
-            geojson={geojsonPayload?.geojson ?? null}
-            points={points}
-            mode="choropleth"
-            unit={selectedThemeIndicator?.unit ?? ''}
-            selectedCode={selectedCode}
-            onSelect={setSelectedCode}
-            legendScaleMode="linear"
-            themeMode="institutional"
-          />
-        </div>
-
-        <div className="mini-map-summary">
-          <p>
-            <strong>Tema:</strong> {activeThemeDefinition.label}
-          </p>
-          <p>
-            <strong>Indice:</strong> {selectedThemeIndicator?.label ?? 'N/D'} ({selectedYear})
-          </p>
-          <p>
-            <strong>Selecionado:</strong>{' '}
-            {selectedPoint
-              ? `${selectedPoint.name} - ${selectedPoint.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${selectedThemeIndicator?.unit ?? ''}`
-              : 'Clique em uma UF no mapa'}
-          </p>
-          <a href="/mapas" className="mini-map-link" target="_blank" rel="noreferrer">
-            Ir para pagina de mapas completa (nova aba)
-          </a>
         </div>
       </section>
 

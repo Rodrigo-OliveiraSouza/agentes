@@ -147,16 +147,23 @@ body,
 
 .portal-nav-home,
 .portal-nav-inner button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   border-radius: 999px;
   border: 1px solid rgba(197, 220, 245, 0.5);
   background: linear-gradient(180deg, rgba(23, 68, 108, 0.92) 0%, rgba(15, 52, 85, 0.88) 100%);
   color: #ecf3ff;
-  min-height: 38px;
-  padding: 0 15px;
-  font-size: 0.86rem;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 0.84rem;
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.01em;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;

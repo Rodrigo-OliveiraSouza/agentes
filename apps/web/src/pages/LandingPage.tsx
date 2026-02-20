@@ -1,0 +1,277 @@
+import { useEffect, useMemo, useState } from 'react';
+import { MapCanvas } from '../components/MapCanvas';
+import { SiteFooter } from '../components/SiteFooter';
+import { api } from '../lib/api';
+import { homeContentUpdateEvent, loadHomeContent, type HomeContent } from '../lib/homeContent';
+import type { GeoJsonResponse, IndicatorDefinition, IndicatorPoint } from '../lib/types';
+
+const MINI_INDICATOR_PREFERENCE = ['population', 'gdp', 'literacy_rate'];
+
+const toValidLink = (href: string): string => {
+  if (!href.trim()) return '/mapas';
+  return href;
+};
+
+export const LandingPage = () => {
+  const [content, setContent] = useState<HomeContent>(() => loadHomeContent());
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [catalog, setCatalog] = useState<IndicatorDefinition[]>([]);
+  const [miniIndicator, setMiniIndicator] = useState('');
+  const [geojsonPayload, setGeojsonPayload] = useState<GeoJsonResponse | null>(null);
+  const [points, setPoints] = useState<IndicatorPoint[]>([]);
+  const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const refresh = () => {
+      setContent(loadHomeContent());
+    };
+
+    window.addEventListener('storage', refresh);
+    window.addEventListener(homeContentUpdateEvent, refresh as EventListener);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener(homeContentUpdateEvent, refresh as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (content.carousel.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % content.carousel.length);
+    }, 5200);
+    return () => window.clearInterval(timer);
+  }, [content.carousel.length]);
+
+  useEffect(() => {
+    if (activeSlide < content.carousel.length) return;
+    setActiveSlide(0);
+  }, [activeSlide, content.carousel.length]);
+
+  useEffect(() => {
+    let alive = true;
+    const loadCatalog = async () => {
+      try {
+        const indicators = await api.indicators();
+        if (!alive) return;
+        setCatalog(indicators.filter((item) => item.supported));
+      } catch (loadError) {
+        if (!alive) return;
+        setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar indicadores.');
+      }
+    };
+    loadCatalog();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const miniIndicatorOptions = useMemo(() => {
+    if (!catalog.length) return [];
+
+    const preferred = MINI_INDICATOR_PREFERENCE
+      .map((slug) => catalog.find((item) => item.slug === slug))
+      .filter((item): item is IndicatorDefinition => Boolean(item));
+
+    if (preferred.length >= 3) {
+      return preferred.slice(0, 3);
+    }
+
+    const fallback = catalog.filter((item) => !preferred.some((entry) => entry.slug === item.slug));
+    return [...preferred, ...fallback].slice(0, 3);
+  }, [catalog]);
+
+  useEffect(() => {
+    if (!miniIndicatorOptions.length) return;
+    if (miniIndicatorOptions.some((item) => item.slug === miniIndicator)) return;
+    setMiniIndicator(miniIndicatorOptions[0].slug);
+  }, [miniIndicator, miniIndicatorOptions]);
+
+  const selectedMiniIndicator = useMemo(
+    () => miniIndicatorOptions.find((item) => item.slug === miniIndicator) ?? null,
+    [miniIndicatorOptions, miniIndicator],
+  );
+
+  const selectedYear = selectedMiniIndicator?.defaultYear ?? 2022;
+
+  useEffect(() => {
+    if (!selectedMiniIndicator) return;
+    let alive = true;
+    setLoading(true);
+    setError('');
+    setSelectedCode(null);
+
+    const loadMiniMap = async () => {
+      try {
+        const [geojson, data] = await Promise.all([
+          api.geojson({ level: 'UF', simplified: true }),
+          api.data({
+            indicator: selectedMiniIndicator.slug,
+            level: 'UF',
+            year: selectedYear,
+            limit: 100,
+          }),
+        ]);
+
+        if (!alive) return;
+        setGeojsonPayload(geojson);
+        setPoints([...data.items].sort((a, b) => b.value - a.value));
+      } catch (loadError) {
+        if (!alive) return;
+        setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar mini mapa.');
+      } finally {
+        if (alive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadMiniMap();
+    return () => {
+      alive = false;
+    };
+  }, [selectedMiniIndicator, selectedYear]);
+
+  const selectedPoint = useMemo(() => {
+    if (!selectedCode) return null;
+    return points.find((item) => item.code === selectedCode) ?? null;
+  }, [points, selectedCode]);
+
+  const currentSlide = content.carousel[activeSlide] ?? content.carousel[0];
+
+  return (
+    <div className="landing-shell">
+      <section className="landing-hero">
+        <div className="landing-hero-inner">
+          <div className="landing-copy">
+            <p className="landing-kicker">Divulgacao Institucional</p>
+            <h1>{content.projectName}</h1>
+            <p className="landing-subtitle">{content.institutionTagline}</p>
+            <p className="landing-text">
+              Esta pagina concentra noticias, reacoes da comunidade e materiais de divulgacao do projeto. Para analise
+              tecnica completa, utilize a pagina de mapas com todos os filtros e exportacoes.
+            </p>
+            <div className="landing-actions">
+              <a href="/mapas" className="landing-btn landing-btn-primary">
+                Abrir pagina de mapas
+              </a>
+              <a href="https://pnit.infinity.dev.br/" target="_blank" rel="noreferrer" className="landing-btn landing-btn-secondary">
+                Plataforma de agentes
+              </a>
+              <a href="https://plataformadiversifica.vercel.app/" target="_blank" rel="noreferrer" className="landing-btn landing-btn-secondary">
+                Plataforma Diversifica
+              </a>
+            </div>
+          </div>
+
+          <div className="landing-carousel">
+            {currentSlide ? (
+              <a href={toValidLink(currentSlide.link)} className="landing-carousel-item">
+                <img src={currentSlide.imageUrl} alt={currentSlide.title} />
+                <div className="landing-carousel-overlay">
+                  <p className="landing-kicker">Destaque</p>
+                  <h3>{currentSlide.title}</h3>
+                  <p>{currentSlide.summary}</p>
+                </div>
+              </a>
+            ) : (
+              <div className="landing-carousel-empty">Nenhuma imagem cadastrada.</div>
+            )}
+            {content.carousel.length > 1 ? (
+              <div className="landing-dots">
+                {content.carousel.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={index === activeSlide ? 'active' : ''}
+                    onClick={() => setActiveSlide(index)}
+                    aria-label={`Slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="news-section">
+        <div className="news-section-inner">
+          <div className="news-head">
+            <h2>Noticias e reacoes</h2>
+            <p>Atualizacao de conteudo: {content.updatedAt}</p>
+          </div>
+          <div className="news-grid">
+            {content.news.map((item) => (
+              <article key={item.id} className="news-card">
+                <p className="news-date">{item.date}</p>
+                <h3>{item.title}</h3>
+                <p>{item.summary}</p>
+                <p className="news-reaction">{item.reaction}</p>
+                <a href={toValidLink(item.link)}>Ler mais</a>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mini-map-section">
+        <div className="mini-map-head">
+          <div>
+            <h2>Mapa rapido (2-3 indices)</h2>
+            <p>Visao sintetica por UF. Para painel completo, entre na pagina de mapas.</p>
+          </div>
+          <div className="mini-map-controls">
+            <label htmlFor="mini-map-indicator">Indice</label>
+            <select
+              id="mini-map-indicator"
+              value={miniIndicator}
+              onChange={(event) => setMiniIndicator(event.target.value)}
+              disabled={!miniIndicatorOptions.length}
+            >
+              {miniIndicatorOptions.map((item) => (
+                <option key={item.slug} value={item.slug}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {error ? <div className="error-banner">{error}</div> : null}
+        {loading ? <div className="loading-banner">Carregando mini mapa...</div> : null}
+
+        <div className="mini-map-canvas">
+          <MapCanvas
+            geojson={geojsonPayload?.geojson ?? null}
+            points={points}
+            mode="choropleth"
+            unit={selectedMiniIndicator?.unit ?? ''}
+            selectedCode={selectedCode}
+            onSelect={setSelectedCode}
+            legendScaleMode="linear"
+            themeMode="institutional"
+          />
+        </div>
+
+        <div className="mini-map-summary">
+          <p>
+            <strong>Indice:</strong> {selectedMiniIndicator?.label ?? 'N/D'} ({selectedYear})
+          </p>
+          <p>
+            <strong>Selecionado:</strong>{' '}
+            {selectedPoint
+              ? `${selectedPoint.name} - ${selectedPoint.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${selectedMiniIndicator?.unit ?? ''}`
+              : 'Clique em uma UF no mapa'}
+          </p>
+          <a href="/mapas" className="mini-map-link">
+            Ir para pagina de mapas completa
+          </a>
+        </div>
+      </section>
+
+      <SiteFooter />
+    </div>
+  );
+};
+

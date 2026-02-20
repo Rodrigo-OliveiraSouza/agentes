@@ -6,7 +6,57 @@ import { homeContentUpdateEvent, loadHomeContent, type HomeContent } from '../li
 import { extractYouTubeVideoId } from '../lib/youtube';
 import type { GeoJsonResponse, IndicatorDefinition, IndicatorPoint } from '../lib/types';
 
-const MINI_INDICATOR_PREFERENCE = ['population', 'gdp', 'literacy_rate'];
+type ThemeKey = 'politica' | 'economia' | 'saude' | 'educacao' | 'seguranca' | 'demografia' | 'infraestrutura';
+
+const THEME_MAPS: Array<{
+  key: ThemeKey;
+  label: string;
+  description: string;
+  indicators: string[];
+}> = [
+  {
+    key: 'politica',
+    label: 'Politica Publica',
+    description: 'Leitura territorial de desigualdade e desenvolvimento para apoiar decisao publica.',
+    indicators: ['idh', 'gini_index', 'extreme_poverty_rate', 'income_per_capita'],
+  },
+  {
+    key: 'economia',
+    label: 'Economia',
+    description: 'Indicadores de renda, atividade economica e condicao de trabalho no territorio.',
+    indicators: ['gdp', 'income_per_capita', 'unemployment_rate', 'extreme_poverty_rate'],
+  },
+  {
+    key: 'saude',
+    label: 'Saude',
+    description: 'Cobertura e resultados de saude para comparacao entre UFs.',
+    indicators: ['life_expectancy', 'infant_mortality_rate', 'prenatal_coverage', 'primary_care_coverage'],
+  },
+  {
+    key: 'educacao',
+    label: 'Educacao',
+    description: 'Indicadores de alfabetizacao, frequencia escolar e conclusao educacional.',
+    indicators: ['literacy_rate', 'school_attendance_rate', 'higher_education_rate', 'internet_access_rate'],
+  },
+  {
+    key: 'seguranca',
+    label: 'Seguranca',
+    description: 'Visao territorial de homicidios, roubos e riscos de mobilidade.',
+    indicators: ['homicide_rate', 'robbery_rate', 'crime_rate', 'traffic_mortality_rate'],
+  },
+  {
+    key: 'demografia',
+    label: 'Demografia',
+    description: 'Distribuicao populacional, densidade e transicao etaria por UF.',
+    indicators: ['population', 'demographic_density', 'aging_index', 'fertility_rate'],
+  },
+  {
+    key: 'infraestrutura',
+    label: 'Infraestrutura',
+    description: 'Servicos urbanos essenciais para qualidade de vida e dignidade.',
+    indicators: ['water_network_coverage', 'sewer_network_coverage', 'garbage_collection_coverage', 'electricity_access_rate'],
+  },
+];
 
 const toValidLink = (href: string): string => {
   if (!href.trim()) return '/mapas';
@@ -26,7 +76,8 @@ export const LandingPage = () => {
   const [content, setContent] = useState<HomeContent>(() => loadHomeContent());
   const [activeSlide, setActiveSlide] = useState(0);
   const [catalog, setCatalog] = useState<IndicatorDefinition[]>([]);
-  const [miniIndicator, setMiniIndicator] = useState('');
+  const [activeTheme, setActiveTheme] = useState<ThemeKey>('politica');
+  const [activeThemeIndicator, setActiveThemeIndicator] = useState('');
   const [geojsonPayload, setGeojsonPayload] = useState<GeoJsonResponse | null>(null);
   const [points, setPoints] = useState<IndicatorPoint[]>([]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -77,36 +128,38 @@ export const LandingPage = () => {
     };
   }, []);
 
-  const miniIndicatorOptions = useMemo(() => {
-    if (!catalog.length) return [];
-
-    const preferred = MINI_INDICATOR_PREFERENCE
-      .map((slug) => catalog.find((item) => item.slug === slug))
-      .filter((item): item is IndicatorDefinition => Boolean(item));
-
-    if (preferred.length >= 3) {
-      return preferred.slice(0, 3);
-    }
-
-    const fallback = catalog.filter((item) => !preferred.some((entry) => entry.slug === item.slug));
-    return [...preferred, ...fallback].slice(0, 3);
+  const indicatorsBySlug = useMemo(() => {
+    return new Map(catalog.map((item) => [item.slug, item]));
   }, [catalog]);
 
-  useEffect(() => {
-    if (!miniIndicatorOptions.length) return;
-    if (miniIndicatorOptions.some((item) => item.slug === miniIndicator)) return;
-    setMiniIndicator(miniIndicatorOptions[0].slug);
-  }, [miniIndicator, miniIndicatorOptions]);
+  const activeThemeDefinition = useMemo(() => {
+    return THEME_MAPS.find((item) => item.key === activeTheme) ?? THEME_MAPS[0];
+  }, [activeTheme]);
 
-  const selectedMiniIndicator = useMemo(
-    () => miniIndicatorOptions.find((item) => item.slug === miniIndicator) ?? null,
-    [miniIndicatorOptions, miniIndicator],
+  const themeIndicatorOptions = useMemo(() => {
+    const preferred = activeThemeDefinition.indicators
+      .map((slug) => indicatorsBySlug.get(slug))
+      .filter((item): item is IndicatorDefinition => Boolean(item));
+
+    if (preferred.length) return preferred;
+    return catalog.slice(0, 4);
+  }, [activeThemeDefinition, indicatorsBySlug, catalog]);
+
+  useEffect(() => {
+    if (!themeIndicatorOptions.length) return;
+    if (themeIndicatorOptions.some((item) => item.slug === activeThemeIndicator)) return;
+    setActiveThemeIndicator(themeIndicatorOptions[0].slug);
+  }, [activeThemeIndicator, themeIndicatorOptions]);
+
+  const selectedThemeIndicator = useMemo(
+    () => themeIndicatorOptions.find((item) => item.slug === activeThemeIndicator) ?? null,
+    [themeIndicatorOptions, activeThemeIndicator],
   );
 
-  const selectedYear = selectedMiniIndicator?.defaultYear ?? 2022;
+  const selectedYear = selectedThemeIndicator?.defaultYear ?? 2022;
 
   useEffect(() => {
-    if (!selectedMiniIndicator) return;
+    if (!selectedThemeIndicator) return;
     let alive = true;
     setLoading(true);
     setError('');
@@ -117,7 +170,7 @@ export const LandingPage = () => {
         const [geojson, data] = await Promise.all([
           api.geojson({ level: 'UF', simplified: true }),
           api.data({
-            indicator: selectedMiniIndicator.slug,
+            indicator: selectedThemeIndicator.slug,
             level: 'UF',
             year: selectedYear,
             limit: 100,
@@ -141,7 +194,7 @@ export const LandingPage = () => {
     return () => {
       alive = false;
     };
-  }, [selectedMiniIndicator, selectedYear]);
+  }, [selectedThemeIndicator, selectedYear]);
 
   const selectedPoint = useMemo(() => {
     if (!selectedCode) return null;
@@ -167,12 +220,12 @@ export const LandingPage = () => {
       <section className="landing-hero">
         <div className="landing-hero-inner">
           <div className="landing-copy">
-            <p className="landing-kicker">Divulgacao Institucional</p>
+            <p className="landing-kicker">Portal Territorial</p>
             <h1>{content.projectName}</h1>
             <p className="landing-subtitle">{content.institutionTagline}</p>
             <p className="landing-text">
-              Esta pagina concentra noticias, reacoes da comunidade e materiais de divulgacao do projeto. Para analise
-              tecnica completa, utilize a pagina de mapas com todos os filtros e exportacoes.
+              Painel de noticias e analise por tema do Projeto Luiza Barros. Explore politica, economia, saude,
+              educacao, seguranca e infraestrutura com mapas de indicadores atualizados.
             </p>
             <div className="landing-actions">
               <a href="/mapas" className="landing-btn landing-btn-primary">
@@ -363,24 +416,38 @@ export const LandingPage = () => {
       <section className="mini-map-section">
         <div className="mini-map-head">
           <div>
-            <h2>Mapa rapido (2-3 indices)</h2>
-            <p>Visao sintetica por UF. Para painel completo, entre na pagina de mapas.</p>
+            <h2>Mapas por tema</h2>
+            <p>{activeThemeDefinition.description}</p>
           </div>
-          <div className="mini-map-controls">
-            <label htmlFor="mini-map-indicator">Indice</label>
-            <select
-              id="mini-map-indicator"
-              value={miniIndicator}
-              onChange={(event) => setMiniIndicator(event.target.value)}
-              disabled={!miniIndicatorOptions.length}
+          <a href="/mapas" className="mini-map-complete-link" target="_blank" rel="noreferrer">
+            Abrir mapa completo com todos os filtros
+          </a>
+        </div>
+
+        <div className="theme-tabs" role="tablist" aria-label="Temas de analise">
+          {THEME_MAPS.map((theme) => (
+            <button
+              key={theme.key}
+              type="button"
+              className={theme.key === activeTheme ? 'active' : ''}
+              onClick={() => setActiveTheme(theme.key)}
             >
-              {miniIndicatorOptions.map((item) => (
-                <option key={item.slug} value={item.slug}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
+              {theme.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="theme-indicator-row">
+          {themeIndicatorOptions.map((item) => (
+            <button
+              key={item.slug}
+              type="button"
+              className={item.slug === activeThemeIndicator ? 'active' : ''}
+              onClick={() => setActiveThemeIndicator(item.slug)}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
 
         {error ? <div className="error-banner">{error}</div> : null}
@@ -391,7 +458,7 @@ export const LandingPage = () => {
             geojson={geojsonPayload?.geojson ?? null}
             points={points}
             mode="choropleth"
-            unit={selectedMiniIndicator?.unit ?? ''}
+            unit={selectedThemeIndicator?.unit ?? ''}
             selectedCode={selectedCode}
             onSelect={setSelectedCode}
             legendScaleMode="linear"
@@ -401,16 +468,19 @@ export const LandingPage = () => {
 
         <div className="mini-map-summary">
           <p>
-            <strong>Indice:</strong> {selectedMiniIndicator?.label ?? 'N/D'} ({selectedYear})
+            <strong>Tema:</strong> {activeThemeDefinition.label}
+          </p>
+          <p>
+            <strong>Indice:</strong> {selectedThemeIndicator?.label ?? 'N/D'} ({selectedYear})
           </p>
           <p>
             <strong>Selecionado:</strong>{' '}
             {selectedPoint
-              ? `${selectedPoint.name} - ${selectedPoint.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${selectedMiniIndicator?.unit ?? ''}`
+              ? `${selectedPoint.name} - ${selectedPoint.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${selectedThemeIndicator?.unit ?? ''}`
               : 'Clique em uma UF no mapa'}
           </p>
-          <a href="/mapas" className="mini-map-link">
-            Ir para pagina de mapas completa
+          <a href="/mapas" className="mini-map-link" target="_blank" rel="noreferrer">
+            Ir para pagina de mapas completa (nova aba)
           </a>
         </div>
       </section>

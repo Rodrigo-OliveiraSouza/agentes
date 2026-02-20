@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 import {
   defaultHomeContent,
   loadHomeContent,
@@ -7,6 +7,10 @@ import {
   type HomeCarouselItem,
   type HomeNewsItem,
 } from '../lib/homeContent';
+
+const ADMIN_SESSION_KEY = 'luiza-barros-admin-session-v1';
+const ADMIN_SESSION_TTL_MS = 1000 * 60 * 90;
+const ADMIN_FALLBACK_ACCESS_CODE = 'luiza-barros-2026';
 
 const makeId = (prefix: string): string => `${prefix}-${Date.now()}-${Math.round(Math.random() * 10_000)}`;
 
@@ -19,7 +23,52 @@ const readFileAsDataUrl = (file: File): Promise<string> => {
   });
 };
 
+const getExpectedAccessCode = (): string => {
+  const configured = import.meta.env.VITE_ADMIN_ACCESS_CODE?.trim();
+  if (configured && configured.length >= 4) {
+    return configured;
+  }
+  return ADMIN_FALLBACK_ACCESS_CODE;
+};
+
+const hasValidAdminSession = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = window.sessionStorage.getItem(ADMIN_SESSION_KEY);
+    if (!raw) return false;
+    const payload = JSON.parse(raw) as { expiresAt?: number };
+    if (typeof payload.expiresAt !== 'number' || payload.expiresAt <= Date.now()) {
+      window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      return false;
+    }
+    return true;
+  } catch {
+    window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    return false;
+  }
+};
+
+const persistAdminSession = (): void => {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.setItem(
+    ADMIN_SESSION_KEY,
+    JSON.stringify({
+      expiresAt: Date.now() + ADMIN_SESSION_TTL_MS,
+    }),
+  );
+};
+
+const clearAdminSession = (): void => {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+};
+
 export const AdminPage = () => {
+  const expectedAccessCode = useMemo(getExpectedAccessCode, []);
+  const isFallbackCode = expectedAccessCode === ADMIN_FALLBACK_ACCESS_CODE;
+  const [isUnlocked, setIsUnlocked] = useState(hasValidAdminSession);
+  const [accessCode, setAccessCode] = useState('');
+  const [accessMessage, setAccessMessage] = useState('');
   const [draft, setDraft] = useState(loadHomeContent);
   const [status, setStatus] = useState('');
 
@@ -27,6 +76,60 @@ export const AdminPage = () => {
     () => [...draft.news].sort((a, b) => (a.date < b.date ? 1 : -1)),
     [draft.news],
   );
+
+  const unlockAdmin = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (accessCode.trim() !== expectedAccessCode) {
+      setAccessMessage('Codigo invalido. Tente novamente.');
+      return;
+    }
+
+    persistAdminSession();
+    setIsUnlocked(true);
+    setAccessCode('');
+    setAccessMessage('');
+  };
+
+  const lockAdmin = () => {
+    clearAdminSession();
+    setIsUnlocked(false);
+    setStatus('');
+    setAccessCode('');
+    setAccessMessage('Sessao encerrada.');
+  };
+
+  if (!isUnlocked) {
+    return (
+      <div className="admin-gate-shell">
+        <section className="admin-gate-card">
+          <p className="admin-kicker">Painel protegido</p>
+          <h1>Acesso restrito</h1>
+          <p>Informe o codigo para editar conteudo da pagina inicial.</p>
+          <form className="admin-gate-form" onSubmit={unlockAdmin}>
+            <label htmlFor="admin-access-code">
+              Codigo de acesso
+              <input
+                id="admin-access-code"
+                type="password"
+                value={accessCode}
+                onChange={(event) => setAccessCode(event.target.value)}
+                placeholder="Digite o codigo"
+                autoComplete="off"
+              />
+            </label>
+            <button type="submit">Entrar no painel</button>
+          </form>
+          {accessMessage ? <p className="admin-gate-message">{accessMessage}</p> : null}
+          {isFallbackCode ? (
+            <p className="admin-gate-warning">
+              Codigo padrao em uso. Defina `VITE_ADMIN_ACCESS_CODE` no ambiente para aumentar a seguranca.
+            </p>
+          ) : null}
+          <a href="/">Voltar para pagina inicial</a>
+        </section>
+      </div>
+    );
+  }
 
   const updateCarousel = (id: string, patch: Partial<HomeCarouselItem>) => {
     setDraft((current) => ({
@@ -74,6 +177,9 @@ export const AdminPage = () => {
           </button>
           <button type="button" onClick={restoreDefault}>
             Restaurar padrao
+          </button>
+          <button type="button" onClick={lockAdmin}>
+            Encerrar sessao
           </button>
           <a href="/">Voltar para pagina inicial</a>
         </div>
@@ -255,6 +361,19 @@ export const AdminPage = () => {
       </section>
 
       <section className="admin-card">
+        <h2>Seguranca atual</h2>
+        <p>
+          O painel usa codigo de acesso em sessao local (90 minutos). Esta barreira reduz acesso acidental, mas a
+          protecao definitiva exige autenticacao no backend.
+        </p>
+        {isFallbackCode ? (
+          <p className="admin-security-alert">
+            Alerta: codigo padrao ativo. Configure `VITE_ADMIN_ACCESS_CODE` no ambiente de build/deploy.
+          </p>
+        ) : null}
+      </section>
+
+      <section className="admin-card">
         <h2>Limite do MVP</h2>
         <p>
           Este admin salva dados no `localStorage` do navegador atual. Para publicar alteracoes globais para todos os
@@ -275,4 +394,3 @@ export const AdminPage = () => {
     </div>
   );
 };
-

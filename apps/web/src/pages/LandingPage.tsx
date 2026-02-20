@@ -12,6 +12,13 @@ const toValidLink = (href: string): string => {
   return href;
 };
 
+const formatDateLabel = (isoDate: string): string => {
+  if (!isoDate.trim()) return 'Data nao informada';
+  const parsed = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return isoDate;
+  return parsed.toLocaleDateString('pt-BR');
+};
+
 export const LandingPage = () => {
   const [content, setContent] = useState<HomeContent>(() => loadHomeContent());
   const [activeSlide, setActiveSlide] = useState(0);
@@ -138,6 +145,12 @@ export const LandingPage = () => {
     return points.find((item) => item.code === selectedCode) ?? null;
   }, [points, selectedCode]);
 
+  const newsByRecency = useMemo(() => [...content.news].sort((a, b) => (a.date < b.date ? 1 : -1)), [content.news]);
+  const featuredNews = newsByRecency[0] ?? null;
+  const secondaryNews = newsByRecency.slice(1, 3);
+  const reactionHighlights = newsByRecency.slice(0, 4);
+  const feedNews = newsByRecency.slice(0, 9);
+
   const currentSlide = content.carousel[activeSlide] ?? content.carousel[0];
 
   return (
@@ -195,20 +208,63 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section className="news-section">
-        <div className="news-section-inner">
-          <div className="news-head">
-            <h2>Noticias e reacoes</h2>
-            <p>Atualizacao de conteudo: {content.updatedAt}</p>
+      <section className="news-showcase">
+        <div className="news-showcase-inner">
+          <div className="news-showcase-head">
+            <div>
+              <h2>Noticias e reacoes em destaque</h2>
+              <p>Atualizacao de conteudo: {content.updatedAt}</p>
+            </div>
+            <a href="/mapas" className="news-showcase-link">
+              Abrir analise completa no mapa
+            </a>
           </div>
-          <div className="news-grid">
-            {content.news.map((item) => (
-              <article key={item.id} className="news-card">
-                <p className="news-date">{item.date}</p>
+
+          <div className="news-main-grid">
+            {featuredNews ? (
+              <article className="news-lead-card">
+                <p className="news-lead-date">{formatDateLabel(featuredNews.date)}</p>
+                <h3>{featuredNews.title}</h3>
+                <p>{featuredNews.summary}</p>
+                <blockquote>{featuredNews.reaction}</blockquote>
+                <a href={toValidLink(featuredNews.link)}>Ler destaque</a>
+              </article>
+            ) : (
+              <div className="news-lead-empty">Nenhuma noticia cadastrada.</div>
+            )}
+
+            <div className="news-side-list">
+              {secondaryNews.map((item, index) => (
+                <article key={item.id} className={`news-side-card news-side-card-tone-${(index % 2) + 1}`}>
+                  <p className="news-date">{formatDateLabel(item.date)}</p>
+                  <h3>{item.title}</h3>
+                  <p>{item.summary}</p>
+                  <a href={toValidLink(item.link)}>Abrir noticia</a>
+                </article>
+              ))}
+              {!secondaryNews.length ? <div className="news-side-empty">Adicione mais noticias para ampliar o destaque.</div> : null}
+            </div>
+          </div>
+
+          {reactionHighlights.length ? (
+            <div className="reaction-grid">
+              {reactionHighlights.map((item, index) => (
+                <article key={`${item.id}-reaction`} className={`reaction-card reaction-card-tone-${(index % 4) + 1}`}>
+                  <p className="reaction-kicker">Reacao da comunidade</p>
+                  <p className="reaction-text">{item.reaction}</p>
+                  <a href={toValidLink(item.link)}>{item.title}</a>
+                </article>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="news-feed-grid">
+            {feedNews.map((item, index) => (
+              <article key={`${item.id}-feed`} className={`news-feed-card news-feed-tone-${(index % 3) + 1}`}>
+                <p className="news-date">{formatDateLabel(item.date)}</p>
                 <h3>{item.title}</h3>
                 <p>{item.summary}</p>
-                <p className="news-reaction">{item.reaction}</p>
-                <a href={toValidLink(item.link)}>Ler mais</a>
+                <a href={toValidLink(item.link)}>Detalhes</a>
               </article>
             ))}
           </div>
@@ -274,4 +330,3 @@ export const LandingPage = () => {
     </div>
   );
 };
-

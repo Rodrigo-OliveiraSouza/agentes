@@ -137,8 +137,10 @@ Use `.env.example` como base.
 
 - `VITE_API_BASE_URL` (ex.: `http://127.0.0.1:8787` no dev)
 - `VITE_GOOGLE_MAPS_API_KEY`
+- `VITE_ADMIN_ACCESS_CODE` (codigo de acesso para `/dev/admin`)
 - Arquivo local sugerido: `apps/web/.env.local`
 - Em producao, nao use `127.0.0.1` ou `localhost` no Pages.
+- Observacao: o codigo protege a UI do admin no frontend; autenticacao real deve ser feita no backend.
 
 ### API (`apps/api` / Worker)
 

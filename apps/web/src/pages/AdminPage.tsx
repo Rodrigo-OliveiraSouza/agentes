@@ -6,6 +6,8 @@ import {
   saveHomeContent,
   type HomeCarouselItem,
   type HomeCarouselMediaType,
+  type HomeMediaItem,
+  type HomeMediaItemType,
   type HomeNewsItem,
 } from '../lib/homeContent';
 import { buildYouTubeThumbnailUrl, buildYouTubeWatchUrl, extractYouTubeVideoId } from '../lib/youtube';
@@ -66,6 +68,26 @@ const clearAdminSession = (): void => {
 };
 
 const normalizeYoutubeSlide = (item: HomeCarouselItem, rawUrl: string): HomeCarouselItem => {
+  const trimmed = rawUrl.trim();
+  const videoId = extractYouTubeVideoId(trimmed);
+  if (!videoId) {
+    return {
+      ...item,
+      youtubeUrl: trimmed,
+      link: trimmed || item.link,
+    };
+  }
+
+  const watchUrl = buildYouTubeWatchUrl(videoId);
+  return {
+    ...item,
+    youtubeUrl: watchUrl,
+    link: watchUrl,
+    imageUrl: buildYouTubeThumbnailUrl(videoId),
+  };
+};
+
+const normalizeMediaVideoItem = (item: HomeMediaItem, rawUrl: string): HomeMediaItem => {
   const trimmed = rawUrl.trim();
   const videoId = extractYouTubeVideoId(trimmed);
   if (!videoId) {
@@ -167,6 +189,13 @@ export const AdminPage = () => {
     }));
   };
 
+  const updateMediaItem = (id: string, patch: Partial<HomeMediaItem>) => {
+    setDraft((current) => ({
+      ...current,
+      mediaItems: current.mediaItems.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    }));
+  };
+
   const moveCarouselItem = (id: string, direction: -1 | 1) => {
     setDraft((current) => {
       const index = current.carousel.findIndex((item) => item.id === id);
@@ -193,6 +222,39 @@ export const AdminPage = () => {
           return normalizeYoutubeSlide({ ...item, mediaType }, item.youtubeUrl || item.link);
         }
         return { ...item, mediaType };
+      }),
+    }));
+  };
+
+  const moveMediaItem = (id: string, direction: -1 | 1) => {
+    setDraft((current) => {
+      const index = current.mediaItems.findIndex((item) => item.id === id);
+      if (index < 0) return current;
+      const target = index + direction;
+      if (target < 0 || target >= current.mediaItems.length) return current;
+
+      const mediaItems = [...current.mediaItems];
+      const [item] = mediaItems.splice(index, 1);
+      mediaItems.splice(target, 0, item);
+      return {
+        ...current,
+        mediaItems,
+      };
+    });
+  };
+
+  const updateMediaItemType = (id: string, type: HomeMediaItemType) => {
+    setDraft((current) => ({
+      ...current,
+      mediaItems: current.mediaItems.map((item) => {
+        if (item.id !== id) return item;
+        if (type === 'video') {
+          return normalizeMediaVideoItem({ ...item, type }, item.youtubeUrl || item.link);
+        }
+        if (type === 'text') {
+          return { ...item, type, youtubeUrl: '' };
+        }
+        return { ...item, type, youtubeUrl: '' };
       }),
     }));
   };
@@ -301,7 +363,7 @@ export const AdminPage = () => {
                   <div>
                     <h3>{item.title || 'Slide sem titulo'}</h3>
                     <p>
-                      Slide {index + 1} • {item.mediaType === 'youtube' ? 'Video YouTube' : 'Imagem'}
+                      Slide {index + 1} - {item.mediaType === 'youtube' ? 'Video YouTube' : 'Imagem'}
                     </p>
                   </div>
                   <span>{index < 2 ? 'Aberto' : 'Fechado'}</span>
@@ -388,6 +450,11 @@ export const AdminPage = () => {
                           Link de destino
                           <input value={item.link} onChange={(event) => updateCarousel(item.id, { link: event.target.value })} />
                         </label>
+                        <div className="admin-inline-actions">
+                          <button type="button" onClick={() => updateCarousel(item.id, { imageUrl: '' })}>
+                            Limpar imagem atual
+                          </button>
+                        </div>
                         <label className="admin-span-2">
                           URL da imagem
                           <input
@@ -410,6 +477,186 @@ export const AdminPage = () => {
                             }}
                           />
                         </label>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="admin-card">
+        <div className="admin-section-head">
+          <h2>Midias e materiais (foto, video, folder e texto)</h2>
+          <button
+            type="button"
+            onClick={() =>
+              setDraft((current) => ({
+                ...current,
+                mediaItems: [
+                  ...current.mediaItems,
+                  {
+                    id: makeId('material'),
+                    type: 'photo',
+                    title: 'Novo material',
+                    description: 'Descricao do material',
+                    imageUrl: '',
+                    youtubeUrl: '',
+                    link: '',
+                  },
+                ],
+              }))
+            }
+          >
+            Adicionar material
+          </button>
+        </div>
+        <p className="admin-helper-text">
+          Esta secao permite publicar e remover conteudos de divulgacao: foto, video (link YouTube), folder e texto.
+        </p>
+
+        <div className="admin-list">
+          {draft.mediaItems.map((item, index) => {
+            const videoId = extractYouTubeVideoId(item.youtubeUrl || item.link);
+            const youtubeWatchUrl = videoId ? buildYouTubeWatchUrl(videoId) : '';
+            const typeLabel =
+              item.type === 'photo'
+                ? 'Foto'
+                : item.type === 'video'
+                  ? 'Video'
+                  : item.type === 'folder'
+                    ? 'Folder'
+                    : 'Texto';
+
+            return (
+              <details className="admin-item admin-fold-item" key={item.id} open={index < 3}>
+                <summary className="admin-fold-summary">
+                  <div>
+                    <h3>{item.title || 'Material sem titulo'}</h3>
+                    <p>
+                      Item {index + 1} - {typeLabel}
+                    </p>
+                  </div>
+                  <span>{index < 3 ? 'Aberto' : 'Fechado'}</span>
+                </summary>
+
+                <div className="admin-fold-body">
+                  <div className="admin-item-head admin-item-actions">
+                    <div>
+                      <button type="button" onClick={() => moveMediaItem(item.id, -1)} disabled={index === 0}>
+                        Subir
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveMediaItem(item.id, 1)}
+                        disabled={index === draft.mediaItems.length - 1}
+                      >
+                        Descer
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDraft((current) => ({
+                          ...current,
+                          mediaItems: current.mediaItems.filter((entry) => entry.id !== item.id),
+                        }))
+                      }
+                    >
+                      Remover
+                    </button>
+                  </div>
+
+                  <div className="admin-grid">
+                    <label>
+                      Titulo
+                      <input value={item.title} onChange={(event) => updateMediaItem(item.id, { title: event.target.value })} />
+                    </label>
+                    <label>
+                      Tipo de material
+                      <select value={item.type} onChange={(event) => updateMediaItemType(item.id, event.target.value as HomeMediaItemType)}>
+                        <option value="photo">Foto</option>
+                        <option value="video">Video (YouTube)</option>
+                        <option value="folder">Folder</option>
+                        <option value="text">Texto</option>
+                      </select>
+                    </label>
+                    <label className="admin-span-2">
+                      Texto / descricao
+                      <textarea value={item.description} onChange={(event) => updateMediaItem(item.id, { description: event.target.value })} />
+                    </label>
+
+                    {item.type === 'video' ? (
+                      <>
+                        <label className="admin-span-2">
+                          Link do YouTube
+                          <input
+                            value={item.youtubeUrl}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                mediaItems: current.mediaItems.map((entry) =>
+                                  entry.id === item.id ? normalizeMediaVideoItem(entry, event.target.value) : entry,
+                                ),
+                              }))
+                            }
+                            placeholder="https://www.youtube.com/watch?v=..."
+                          />
+                        </label>
+                        <p className={`admin-media-hint admin-span-2${videoId ? ' is-valid' : ''}`}>
+                          {videoId
+                            ? 'Video reconhecido: capa e link para YouTube atualizados automaticamente.'
+                            : 'Cole um link valido do YouTube para ativar este material.'}
+                        </p>
+                        {youtubeWatchUrl ? (
+                          <a className="admin-external-link admin-span-2" href={youtubeWatchUrl} target="_blank" rel="noreferrer">
+                            Abrir video no YouTube
+                          </a>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <label className="admin-span-2">
+                          Link de destino
+                          <input
+                            value={item.link}
+                            onChange={(event) => updateMediaItem(item.id, { link: event.target.value })}
+                            placeholder={item.type === 'folder' ? 'https://drive.google.com/...' : 'https://...'}
+                          />
+                        </label>
+                        {item.type !== 'text' ? (
+                          <>
+                            <div className="admin-inline-actions admin-span-2">
+                              <button type="button" onClick={() => updateMediaItem(item.id, { imageUrl: '' })}>
+                                Limpar imagem atual
+                              </button>
+                            </div>
+                            <label className="admin-span-2">
+                              URL da imagem
+                              <input
+                                value={item.imageUrl}
+                                onChange={(event) => updateMediaItem(item.id, { imageUrl: event.target.value })}
+                                placeholder="https://..."
+                              />
+                            </label>
+                            <label className="admin-span-2">
+                              Upload local (base64)
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={async (event) => {
+                                  const file = event.target.files?.[0];
+                                  if (!file) return;
+                                  const imageUrl = await readFileAsDataUrl(file);
+                                  updateMediaItem(item.id, { imageUrl });
+                                  event.currentTarget.value = '';
+                                }}
+                              />
+                            </label>
+                          </>
+                        ) : null}
                       </>
                     )}
                   </div>

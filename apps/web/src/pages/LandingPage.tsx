@@ -153,6 +153,7 @@ export const LandingPage = () => {
   const secondaryNews = newsByRecency.slice(1, 3);
   const reactionHighlights = newsByRecency.slice(0, 4);
   const feedNews = newsByRecency.slice(0, 9);
+  const mediaItems = content.mediaItems.slice(0, 12);
 
   const currentSlide = content.carousel[activeSlide] ?? content.carousel[0];
   const currentSlideLink = currentSlide
@@ -307,6 +308,54 @@ export const LandingPage = () => {
                 </a>
               </article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="media-hub-section">
+        <div className="media-hub-inner">
+          <div className="media-hub-head">
+            <h2>Midias e materiais</h2>
+            <p>Area para fotos, videos, folders e comunicados editaveis no painel admin.</p>
+          </div>
+
+          <div className="media-hub-grid">
+            {mediaItems.map((item) => {
+              const rawLink = item.type === 'video' ? item.youtubeUrl || item.link : item.link;
+              const hasLink = Boolean(rawLink.trim());
+              const href = toValidLink(rawLink);
+              const external = isExternalLink(href);
+              const typeLabel =
+                item.type === 'photo'
+                  ? 'Foto'
+                  : item.type === 'video'
+                    ? 'Video'
+                    : item.type === 'folder'
+                      ? 'Folder'
+                      : 'Texto';
+
+              return (
+                <article key={item.id} className={`media-card media-card-${item.type}`}>
+                  {item.type !== 'text' && item.imageUrl ? (
+                    <div className="media-card-cover">
+                      <img src={item.imageUrl} alt={item.title} />
+                      {item.type === 'video' ? <span>YouTube</span> : null}
+                    </div>
+                  ) : null}
+
+                  <div className="media-card-body">
+                    <p className="media-card-kicker">{typeLabel}</p>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                    {hasLink ? (
+                      <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined}>
+                        {item.type === 'video' ? 'Abrir video' : item.type === 'folder' ? 'Abrir folder' : 'Abrir material'}
+                      </a>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>

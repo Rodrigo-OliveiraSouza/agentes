@@ -4,6 +4,7 @@ import slideThree from '../assets/carousel/slide-03-painel.svg';
 import { buildYouTubeThumbnailUrl, buildYouTubeWatchUrl, extractYouTubeVideoId } from './youtube';
 
 export type HomeCarouselMediaType = 'image' | 'youtube';
+export type HomeMediaItemType = 'photo' | 'video' | 'folder' | 'text';
 
 export type HomeCarouselItem = {
   id: string;
@@ -24,11 +25,22 @@ export type HomeNewsItem = {
   reaction: string;
 };
 
+export type HomeMediaItem = {
+  id: string;
+  type: HomeMediaItemType;
+  title: string;
+  description: string;
+  imageUrl: string;
+  youtubeUrl: string;
+  link: string;
+};
+
 export type HomeContent = {
   projectName: string;
   institutionTagline: string;
   carousel: HomeCarouselItem[];
   news: HomeNewsItem[];
+  mediaItems: HomeMediaItem[];
   updatedAt: string;
 };
 
@@ -94,12 +106,51 @@ export const defaultHomeContent: HomeContent = {
       reaction: 'Gestao: ganho de confiabilidade nas publicacoes.',
     },
   ],
+  mediaItems: [
+    {
+      id: 'material-01',
+      type: 'photo',
+      title: 'Registro fotografico territorial',
+      description: 'Galeria com imagens de campo e mobilizacao social.',
+      imageUrl: slideOne,
+      youtubeUrl: '',
+      link: 'https://pnit.infinity.dev.br/',
+    },
+    {
+      id: 'material-02',
+      type: 'video',
+      title: 'Video institucional',
+      description: 'Material audiovisual para divulgacao em redes e eventos.',
+      imageUrl: buildYouTubeThumbnailUrl('aqz-KE-bpKQ'),
+      youtubeUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+      link: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    },
+    {
+      id: 'material-03',
+      type: 'folder',
+      title: 'Pasta de materiais',
+      description: 'Acesso a folder digital, pecas e documentos de campanha.',
+      imageUrl: slideThree,
+      youtubeUrl: '',
+      link: 'https://plataformadiversifica.vercel.app/',
+    },
+    {
+      id: 'material-04',
+      type: 'text',
+      title: 'Comunicado institucional',
+      description: 'Texto curto para destacar comunicados e orientacoes publicas.',
+      imageUrl: '',
+      youtubeUrl: '',
+      link: '',
+    },
+  ],
 };
 
 const cloneContent = (content: HomeContent): HomeContent => ({
   ...content,
   carousel: content.carousel.map((item) => ({ ...item })),
   news: content.news.map((item) => ({ ...item })),
+  mediaItems: content.mediaItems.map((item) => ({ ...item })),
 });
 
 const sanitizeContent = (value: unknown): HomeContent => {
@@ -147,6 +198,37 @@ const sanitizeContent = (value: unknown): HomeContent => {
           }))
           .slice(0, 30)
       : cloneContent(defaultHomeContent).news,
+    mediaItems: Array.isArray(payload.mediaItems) && payload.mediaItems.length
+      ? payload.mediaItems
+          .map((item, index) => {
+            const fallback = defaultHomeContent.mediaItems[index % defaultHomeContent.mediaItems.length];
+            const type: HomeMediaItemType =
+              item.type === 'video' || item.type === 'photo' || item.type === 'folder' || item.type === 'text'
+                ? item.type
+                : 'text';
+
+            const rawLink = item.link?.trim() || fallback.link || '';
+            const parsedVideoId = extractYouTubeVideoId(item.youtubeUrl?.trim() || rawLink);
+            const youtubeUrl = type === 'video' && parsedVideoId ? buildYouTubeWatchUrl(parsedVideoId) : '';
+
+            const imageUrl = type === 'video'
+              ? (parsedVideoId ? buildYouTubeThumbnailUrl(parsedVideoId) : item.imageUrl?.trim() || fallback.imageUrl)
+              : type === 'text'
+                ? item.imageUrl?.trim() || ''
+                : item.imageUrl?.trim() || fallback.imageUrl;
+
+            return {
+              id: item.id?.trim() || `material-${index + 1}`,
+              type,
+              title: item.title?.trim() || `Material ${index + 1}`,
+              description: item.description?.trim() || 'Sem descricao informada.',
+              imageUrl,
+              youtubeUrl: type === 'video' ? (youtubeUrl || item.youtubeUrl?.trim() || '') : '',
+              link: type === 'video' ? (youtubeUrl || rawLink) : item.link?.trim() || fallback.link || '',
+            };
+          })
+          .slice(0, 30)
+      : cloneContent(defaultHomeContent).mediaItems,
   };
 };
 

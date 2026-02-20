@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { MapCanvas } from '../components/MapCanvas';
 import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
-import { homeContentUpdateEvent, loadHomeContent, type HomeContent } from '../lib/homeContent';
+import { homeContentUpdateEvent, loadHomeContent, type HomeContent, type HomeThemeKey } from '../lib/homeContent';
 import { extractYouTubeVideoId } from '../lib/youtube';
 import type { GeoJsonResponse, IndicatorDefinition, IndicatorPoint } from '../lib/types';
 
-type ThemeKey = 'politica' | 'economia' | 'saude' | 'educacao' | 'seguranca' | 'demografia' | 'infraestrutura';
+type ThemeKey = Exclude<HomeThemeKey, 'geral'>;
 
 const THEME_MAPS: Array<{
   key: ThemeKey;
@@ -209,13 +209,38 @@ export const LandingPage = () => {
     );
   }, [newsByRecency, newsQuery]);
 
-  const featuredNews = filteredNews[0] ?? null;
-  const feedNews = filteredNews.slice(0, 9);
-  const featuredVideo = content.mediaItems.find((item) => item.type === 'video') ?? null;
+  const themeNews = useMemo(() => {
+    const exactTheme = filteredNews.filter((item) => item.theme === activeTheme);
+    if (exactTheme.length) return exactTheme;
+
+    const generalTheme = filteredNews.filter((item) => item.theme === 'geral');
+    if (generalTheme.length) return generalTheme;
+
+    return filteredNews;
+  }, [filteredNews, activeTheme]);
+
+  const featuredNews = themeNews[0] ?? null;
+  const feedNews = themeNews.slice(0, 9);
+
+  const featuredVideo = useMemo(() => {
+    const videoItems = content.mediaItems.filter((item) => item.type === 'video');
+    const exactTheme = videoItems.find((item) => item.theme === activeTheme);
+    if (exactTheme) return exactTheme;
+
+    const generalTheme = videoItems.find((item) => item.theme === 'geral');
+    if (generalTheme) return generalTheme;
+
+    return null;
+  }, [content.mediaItems, activeTheme]);
+
   const featuredVideoLink = featuredVideo ? toValidLink(featuredVideo.youtubeUrl || featuredVideo.link) : '';
   const featuredVideoIsExternal = featuredVideo ? isExternalLink(featuredVideoLink) : false;
   const featuredVideoId = featuredVideo ? extractYouTubeVideoId(featuredVideo.youtubeUrl || featuredVideo.link) : null;
-  const supportMaterials = content.mediaItems.filter((item) => item.type !== 'video').slice(0, 8);
+  const supportMaterials = useMemo(() => {
+    const materialItems = content.mediaItems.filter((item) => item.type !== 'video');
+    const themedItems = materialItems.filter((item) => item.theme === activeTheme || item.theme === 'geral');
+    return (themedItems.length ? themedItems : materialItems).slice(0, 8);
+  }, [content.mediaItems, activeTheme]);
 
   const currentSlide = content.carousel[activeSlide] ?? content.carousel[0];
   const currentSlideLink = currentSlide
@@ -321,7 +346,7 @@ export const LandingPage = () => {
           </div>
 
           <div className="portal-featured-news">
-            <h2>Noticia em destaque</h2>
+            <h2>Noticia em destaque - {activeThemeDefinition.label}</h2>
             {featuredNews ? (
               <article>
                 <p className="portal-news-date">{formatDateLabel(featuredNews.date)}</p>
@@ -337,7 +362,7 @@ export const LandingPage = () => {
                 </a>
               </article>
             ) : (
-              <p className="portal-empty-text">Nenhuma noticia encontrada para o filtro atual.</p>
+              <p className="portal-empty-text">Nenhuma noticia cadastrada para o tema atual.</p>
             )}
           </div>
         </div>
@@ -346,7 +371,7 @@ export const LandingPage = () => {
       <section className="portal-video-section">
         <div className="portal-video-inner">
           <div>
-            <h2>Video em destaque</h2>
+            <h2>Video em destaque - {activeThemeDefinition.label}</h2>
             <p>
               Conteudo audiovisual conectado ao projeto. O video permanece no YouTube e aqui exibimos apenas referencia
               e acesso.
@@ -373,7 +398,7 @@ export const LandingPage = () => {
               </article>
             </div>
           ) : (
-            <p className="portal-empty-text">Nenhum video cadastrado no painel admin.</p>
+            <p className="portal-empty-text">Nenhum video cadastrado para o tema atual.</p>
           )}
         </div>
       </section>

@@ -5,6 +5,18 @@ import { buildYouTubeThumbnailUrl, buildYouTubeWatchUrl, extractYouTubeVideoId }
 
 export type HomeCarouselMediaType = 'image' | 'youtube';
 export type HomeMediaItemType = 'photo' | 'video' | 'folder' | 'text';
+export type HomeThemeKey = 'geral' | 'politica' | 'economia' | 'saude' | 'educacao' | 'seguranca' | 'demografia' | 'infraestrutura';
+
+export const HOME_THEME_OPTIONS: Array<{ key: HomeThemeKey; label: string }> = [
+  { key: 'geral', label: 'Geral' },
+  { key: 'politica', label: 'Politica Publica' },
+  { key: 'economia', label: 'Economia' },
+  { key: 'saude', label: 'Saude' },
+  { key: 'educacao', label: 'Educacao' },
+  { key: 'seguranca', label: 'Seguranca' },
+  { key: 'demografia', label: 'Demografia' },
+  { key: 'infraestrutura', label: 'Infraestrutura' },
+];
 
 export type HomeCarouselItem = {
   id: string;
@@ -18,6 +30,7 @@ export type HomeCarouselItem = {
 
 export type HomeNewsItem = {
   id: string;
+  theme: HomeThemeKey;
   title: string;
   summary: string;
   date: string;
@@ -28,6 +41,7 @@ export type HomeNewsItem = {
 export type HomeMediaItem = {
   id: string;
   type: HomeMediaItemType;
+  theme: HomeThemeKey;
   title: string;
   description: string;
   imageUrl: string;
@@ -83,6 +97,7 @@ export const defaultHomeContent: HomeContent = {
   news: [
     {
       id: 'news-01',
+      theme: 'politica',
       title: 'Rede territorial amplia mobilizacao em comunidades urbanas',
       summary: 'Equipe local iniciou novo ciclo de escuta comunitaria com foco em acesso a direitos.',
       date: '2026-02-18',
@@ -91,6 +106,7 @@ export const defaultHomeContent: HomeContent = {
     },
     {
       id: 'news-02',
+      theme: 'economia',
       title: 'Painel de indicadores passa a incluir analise comparativa',
       summary: 'Nova camada analitica ajuda a priorizar municipios com maior vulnerabilidade.',
       date: '2026-02-17',
@@ -99,6 +115,7 @@ export const defaultHomeContent: HomeContent = {
     },
     {
       id: 'news-03',
+      theme: 'infraestrutura',
       title: 'Parceria com plataformas abertas fortalece transparencia',
       summary: 'Integração de fontes publicas amplia rastreabilidade dos dados do observatorio.',
       date: '2026-02-16',
@@ -110,6 +127,7 @@ export const defaultHomeContent: HomeContent = {
     {
       id: 'material-01',
       type: 'photo',
+      theme: 'politica',
       title: 'Registro fotografico territorial',
       description: 'Galeria com imagens de campo e mobilizacao social.',
       imageUrl: slideOne,
@@ -119,6 +137,7 @@ export const defaultHomeContent: HomeContent = {
     {
       id: 'material-02',
       type: 'video',
+      theme: 'economia',
       title: 'Video institucional',
       description: 'Material audiovisual para divulgacao em redes e eventos.',
       imageUrl: buildYouTubeThumbnailUrl('aqz-KE-bpKQ'),
@@ -126,8 +145,29 @@ export const defaultHomeContent: HomeContent = {
       link: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
     },
     {
+      id: 'material-05',
+      type: 'video',
+      theme: 'saude',
+      title: 'Video em destaque - Saude publica',
+      description: 'Resumo em video com foco em cobertura de atencao primaria e pre-natal.',
+      imageUrl: buildYouTubeThumbnailUrl('aqz-KE-bpKQ'),
+      youtubeUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+      link: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    },
+    {
+      id: 'material-06',
+      type: 'video',
+      theme: 'educacao',
+      title: 'Video em destaque - Educacao e oportunidade',
+      description: 'Conteudo audiovisual sobre alfabetizacao, frequencia escolar e ensino superior.',
+      imageUrl: buildYouTubeThumbnailUrl('aqz-KE-bpKQ'),
+      youtubeUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+      link: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    },
+    {
       id: 'material-03',
       type: 'folder',
+      theme: 'infraestrutura',
       title: 'Pasta de materiais',
       description: 'Acesso a folder digital, pecas e documentos de campanha.',
       imageUrl: slideThree,
@@ -137,6 +177,7 @@ export const defaultHomeContent: HomeContent = {
     {
       id: 'material-04',
       type: 'text',
+      theme: 'geral',
       title: 'Comunicado institucional',
       description: 'Texto curto para destacar comunicados e orientacoes publicas.',
       imageUrl: '',
@@ -152,6 +193,17 @@ const cloneContent = (content: HomeContent): HomeContent => ({
   news: content.news.map((item) => ({ ...item })),
   mediaItems: content.mediaItems.map((item) => ({ ...item })),
 });
+
+const THEME_FALLBACK_SEQUENCE: HomeThemeKey[] = ['politica', 'economia', 'saude', 'educacao', 'seguranca', 'demografia', 'infraestrutura'];
+
+const normalizeThemeKey = (value: unknown, fallbackTheme: HomeThemeKey): HomeThemeKey => {
+  if (typeof value !== 'string') return fallbackTheme;
+  const normalized = value.trim().toLowerCase();
+  if (HOME_THEME_OPTIONS.some((option) => option.key === normalized)) {
+    return normalized as HomeThemeKey;
+  }
+  return fallbackTheme;
+};
 
 const sanitizeContent = (value: unknown): HomeContent => {
   if (!value || typeof value !== 'object') {
@@ -188,14 +240,18 @@ const sanitizeContent = (value: unknown): HomeContent => {
       : cloneContent(defaultHomeContent).carousel,
     news: Array.isArray(payload.news) && payload.news.length
       ? payload.news
-          .map((item, index) => ({
-            id: item.id?.trim() || `news-${index + 1}`,
-            title: item.title?.trim() || `Noticia ${index + 1}`,
-            summary: item.summary?.trim() || 'Sem resumo informado.',
-            date: item.date?.trim() || defaultHomeContent.updatedAt,
-            link: item.link?.trim() || '/mapas',
-            reaction: item.reaction?.trim() || 'Sem reacao registrada.',
-          }))
+          .map((item, index) => {
+            const fallbackTheme = THEME_FALLBACK_SEQUENCE[index % THEME_FALLBACK_SEQUENCE.length];
+            return {
+              id: item.id?.trim() || `news-${index + 1}`,
+              theme: normalizeThemeKey(item.theme, fallbackTheme),
+              title: item.title?.trim() || `Noticia ${index + 1}`,
+              summary: item.summary?.trim() || 'Sem resumo informado.',
+              date: item.date?.trim() || defaultHomeContent.updatedAt,
+              link: item.link?.trim() || '/mapas',
+              reaction: item.reaction?.trim() || 'Sem reacao registrada.',
+            };
+          })
           .slice(0, 30)
       : cloneContent(defaultHomeContent).news,
     mediaItems: Array.isArray(payload.mediaItems) && payload.mediaItems.length
@@ -220,6 +276,7 @@ const sanitizeContent = (value: unknown): HomeContent => {
             return {
               id: item.id?.trim() || `material-${index + 1}`,
               type,
+              theme: normalizeThemeKey(item.theme, fallback.theme),
               title: item.title?.trim() || `Material ${index + 1}`,
               description: item.description?.trim() || 'Sem descricao informada.',
               imageUrl,

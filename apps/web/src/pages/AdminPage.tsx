@@ -1,5 +1,6 @@
 import { type FormEvent, useMemo, useState } from 'react';
 import {
+  HOME_THEME_OPTIONS,
   defaultHomeContent,
   loadHomeContent,
   resetHomeContent,
@@ -9,6 +10,7 @@ import {
   type HomeMediaItem,
   type HomeMediaItemType,
   type HomeNewsItem,
+  type HomeThemeKey,
 } from '../lib/homeContent';
 import { buildYouTubeThumbnailUrl, buildYouTubeWatchUrl, extractYouTubeVideoId } from '../lib/youtube';
 
@@ -500,6 +502,7 @@ export const AdminPage = () => {
                   {
                     id: makeId('material'),
                     type: 'photo',
+                    theme: 'geral',
                     title: 'Novo material',
                     description: 'Descricao do material',
                     imageUrl: '',
@@ -581,6 +584,16 @@ export const AdminPage = () => {
                         <option value="video">Video (YouTube)</option>
                         <option value="folder">Folder</option>
                         <option value="text">Texto</option>
+                      </select>
+                    </label>
+                    <label>
+                      Tema do destaque
+                      <select value={item.theme} onChange={(event) => updateMediaItem(item.id, { theme: event.target.value as HomeThemeKey })}>
+                        {HOME_THEME_OPTIONS.map((option) => (
+                          <option key={option.key} value={option.key}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </label>
                     <label className="admin-span-2">
@@ -679,6 +692,7 @@ export const AdminPage = () => {
                   ...current.news,
                   {
                     id: makeId('news'),
+                    theme: 'geral',
                     title: 'Nova noticia',
                     summary: 'Resumo da noticia',
                     date: new Date().toISOString().slice(0, 10),
@@ -728,6 +742,16 @@ export const AdminPage = () => {
                   <label>
                     Data
                     <input type="date" value={item.date} onChange={(event) => updateNews(item.id, { date: event.target.value })} />
+                  </label>
+                  <label>
+                    Tema da noticia
+                    <select value={item.theme} onChange={(event) => updateNews(item.id, { theme: event.target.value as HomeThemeKey })}>
+                      {HOME_THEME_OPTIONS.map((option) => (
+                        <option key={option.key} value={option.key}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="admin-span-2">
                     Resumo

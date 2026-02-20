@@ -71,6 +71,50 @@ const quantileFrom = (sorted: number[], p: number): number => {
 
 const HEATMAP_COLORS = ['#eff6ff', '#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e3a8a'];
 
+const UF_BY_IBGE_CODE: Record<string, string> = {
+  '11': 'RO',
+  '12': 'AC',
+  '13': 'AM',
+  '14': 'RR',
+  '15': 'PA',
+  '16': 'AP',
+  '17': 'TO',
+  '21': 'MA',
+  '22': 'PI',
+  '23': 'CE',
+  '24': 'RN',
+  '25': 'PB',
+  '26': 'PE',
+  '27': 'AL',
+  '28': 'SE',
+  '29': 'BA',
+  '31': 'MG',
+  '32': 'ES',
+  '33': 'RJ',
+  '35': 'SP',
+  '41': 'PR',
+  '42': 'SC',
+  '43': 'RS',
+  '50': 'MS',
+  '51': 'MT',
+  '52': 'GO',
+  '53': 'DF',
+};
+
+const escapeHtml = (value: string): string => {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+};
+
+const ufFromTerritoryCode = (territoryCode: string): string | null => {
+  const ibgeUfCode = territoryCode.length >= 2 ? territoryCode.slice(0, 2) : territoryCode;
+  return UF_BY_IBGE_CODE[ibgeUfCode] ?? null;
+};
+
 const areaOpacityFor = (mode: ViewMode): number => {
   if (mode === 'choropleth') return 0.82;
   if (mode === 'heatmap') return 0.94;
@@ -299,12 +343,25 @@ export const MapCanvas = ({
       const rank = rankByCode.get(code) ?? '-';
       const diff = average > 0 ? ((point.value - average) / average) * 100 : 0;
       const diffLabel = diff >= 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`;
+      const uf = ufFromTerritoryCode(point.code);
+      const flagUrl = uf
+        ? `https://assets.codante.io/codante-apis/bandeiras-do-brasil/${uf.toLowerCase()}-circle.svg`
+        : null;
+      const safeName = escapeHtml(point.name);
+      const safeUnit = escapeHtml(unit);
+      const safeDiff = escapeHtml(diffLabel);
+      const safeValue = escapeHtml(point.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 }));
       const html = `
         <div style="font-size:12px;line-height:1.4;max-width:260px;">
-          <strong>${point.name}</strong><br/>
-          Valor: ${point.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${unit}<br/>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            ${flagUrl
+              ? `<img src="${flagUrl}" alt="Bandeira do estado ${safeName}" width="24" height="24" style="border-radius:999px;display:block;border:1px solid #dbe4f0;" onerror="this.style.display='none'" />`
+              : ''}
+            <strong>${safeName}</strong>
+          </div>
+          Valor: ${safeValue} ${safeUnit}<br/>
           Ranking: ${rank} de ${points.length}<br/>
-          Dif. media: ${diffLabel}
+          Dif. media: ${safeDiff}
         </div>
       `;
 

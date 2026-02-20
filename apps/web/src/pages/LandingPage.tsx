@@ -250,7 +250,7 @@ export const LandingPage = () => {
   const currentSlideVideoId = currentSlide ? extractYouTubeVideoId(currentSlide.youtubeUrl || currentSlide.link) : null;
 
   return (
-    <div className="portal-shell">
+    <div className="portal-shell" data-theme={activeTheme}>
       <header className="portal-header">
         <div className="portal-header-inner">
           <p className="portal-kicker">Projeto Luiza Barros</p>
@@ -463,7 +463,26 @@ export const LandingPage = () => {
 
       <section className="portal-news-section">
         <div className="portal-news-inner">
-          <h2>Ultimas noticias</h2>
+          <div className="portal-news-headline">
+            <p className="portal-news-kicker">Cobertura tematica</p>
+            <h2>Noticias e reacoes - {activeThemeDefinition.label}</h2>
+            <p>Blocos atualizados com leitura rapida de contexto, percepcao social e acesso ao conteudo completo.</p>
+          </div>
+
+          {feedNews.length ? (
+            <div className="portal-reaction-grid">
+              {feedNews.slice(0, 3).map((item, index) => (
+                <article key={`${item.id}-reaction`} className={`portal-reaction-card portal-reaction-tone-${(index % 3) + 1}`}>
+                  <p className="portal-news-date">{formatDateLabel(item.date)}</p>
+                  <h3>{item.title}</h3>
+                  <p>{item.reaction}</p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="portal-empty-text">Nenhuma reacao cadastrada para o tema atual.</p>
+          )}
+
           <div className="portal-news-grid">
             {feedNews.map((item, index) => {
               const fallbackImage = content.carousel[index % content.carousel.length]?.imageUrl;

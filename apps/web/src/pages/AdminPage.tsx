@@ -5,8 +5,10 @@ import {
   resetHomeContent,
   saveHomeContent,
   type HomeCarouselItem,
+  type HomeCarouselMediaType,
   type HomeNewsItem,
 } from '../lib/homeContent';
+import { buildYouTubeThumbnailUrl, buildYouTubeWatchUrl, extractYouTubeVideoId } from '../lib/youtube';
 
 const ADMIN_SESSION_KEY = 'luiza-barros-admin-session-v1';
 const ADMIN_SESSION_TTL_MS = 1000 * 60 * 90;
@@ -61,6 +63,26 @@ const persistAdminSession = (): void => {
 const clearAdminSession = (): void => {
   if (typeof window === 'undefined') return;
   window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+};
+
+const normalizeYoutubeSlide = (item: HomeCarouselItem, rawUrl: string): HomeCarouselItem => {
+  const trimmed = rawUrl.trim();
+  const videoId = extractYouTubeVideoId(trimmed);
+  if (!videoId) {
+    return {
+      ...item,
+      youtubeUrl: trimmed,
+      link: trimmed || item.link,
+    };
+  }
+
+  const watchUrl = buildYouTubeWatchUrl(videoId);
+  return {
+    ...item,
+    youtubeUrl: watchUrl,
+    link: watchUrl,
+    imageUrl: buildYouTubeThumbnailUrl(videoId),
+  };
 };
 
 export const AdminPage = () => {
@@ -145,6 +167,36 @@ export const AdminPage = () => {
     }));
   };
 
+  const moveCarouselItem = (id: string, direction: -1 | 1) => {
+    setDraft((current) => {
+      const index = current.carousel.findIndex((item) => item.id === id);
+      if (index < 0) return current;
+      const target = index + direction;
+      if (target < 0 || target >= current.carousel.length) return current;
+
+      const carousel = [...current.carousel];
+      const [item] = carousel.splice(index, 1);
+      carousel.splice(target, 0, item);
+      return {
+        ...current,
+        carousel,
+      };
+    });
+  };
+
+  const updateCarouselMediaType = (id: string, mediaType: HomeCarouselMediaType) => {
+    setDraft((current) => ({
+      ...current,
+      carousel: current.carousel.map((item) => {
+        if (item.id !== id) return item;
+        if (mediaType === 'youtube') {
+          return normalizeYoutubeSlide({ ...item, mediaType }, item.youtubeUrl || item.link);
+        }
+        return { ...item, mediaType };
+      }),
+    }));
+  };
+
   const saveDraft = () => {
     const payload = {
       ...draft,
@@ -219,7 +271,9 @@ export const AdminPage = () => {
                   ...current.carousel,
                   {
                     id: makeId('slide'),
+                    mediaType: 'image',
                     imageUrl: '',
+                    youtubeUrl: '',
                     title: 'Novo destaque',
                     summary: 'Resumo do destaque',
                     link: '/mapas',
@@ -231,62 +285,138 @@ export const AdminPage = () => {
             Adicionar slide
           </button>
         </div>
+        <p className="admin-helper-text">
+          Imagens fixas no repositorio: `apps/web/src/assets/carousel`. Aqui voce tambem pode usar upload local ou
+          link de video do YouTube (sem hospedar video no site).
+        </p>
 
         <div className="admin-list">
-          {draft.carousel.map((item) => (
-            <article className="admin-item" key={item.id}>
-              <div className="admin-item-head">
-                <h3>{item.title || 'Slide sem titulo'}</h3>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      carousel: current.carousel.filter((entry) => entry.id !== item.id),
-                    }))
-                  }
-                >
-                  Remover
-                </button>
-              </div>
-              <div className="admin-grid">
-                <label>
-                  Titulo
-                  <input value={item.title} onChange={(event) => updateCarousel(item.id, { title: event.target.value })} />
-                </label>
-                <label>
-                  Link
-                  <input value={item.link} onChange={(event) => updateCarousel(item.id, { link: event.target.value })} />
-                </label>
-                <label className="admin-span-2">
-                  Resumo
-                  <textarea value={item.summary} onChange={(event) => updateCarousel(item.id, { summary: event.target.value })} />
-                </label>
-                <label className="admin-span-2">
-                  URL da imagem
-                  <input
-                    value={item.imageUrl}
-                    onChange={(event) => updateCarousel(item.id, { imageUrl: event.target.value })}
-                    placeholder="https://..."
-                  />
-                </label>
-                <label className="admin-span-2">
-                  Upload local (base64)
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (event) => {
-                      const file = event.target.files?.[0];
-                      if (!file) return;
-                      const imageUrl = await readFileAsDataUrl(file);
-                      updateCarousel(item.id, { imageUrl });
-                      event.currentTarget.value = '';
-                    }}
-                  />
-                </label>
-              </div>
-            </article>
-          ))}
+          {draft.carousel.map((item, index) => {
+            const videoId = extractYouTubeVideoId(item.youtubeUrl || item.link);
+            const youtubeWatchUrl = videoId ? buildYouTubeWatchUrl(videoId) : '';
+
+            return (
+              <details className="admin-item admin-fold-item" key={item.id} open={index < 2}>
+                <summary className="admin-fold-summary">
+                  <div>
+                    <h3>{item.title || 'Slide sem titulo'}</h3>
+                    <p>
+                      Slide {index + 1} • {item.mediaType === 'youtube' ? 'Video YouTube' : 'Imagem'}
+                    </p>
+                  </div>
+                  <span>{index < 2 ? 'Aberto' : 'Fechado'}</span>
+                </summary>
+
+                <div className="admin-fold-body">
+                  <div className="admin-item-head admin-item-actions">
+                    <div>
+                      <button type="button" onClick={() => moveCarouselItem(item.id, -1)} disabled={index === 0}>
+                        Subir
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveCarouselItem(item.id, 1)}
+                        disabled={index === draft.carousel.length - 1}
+                      >
+                        Descer
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDraft((current) => ({
+                          ...current,
+                          carousel: current.carousel.filter((entry) => entry.id !== item.id),
+                        }))
+                      }
+                    >
+                      Remover
+                    </button>
+                  </div>
+
+                  <div className="admin-grid">
+                    <label>
+                      Titulo
+                      <input value={item.title} onChange={(event) => updateCarousel(item.id, { title: event.target.value })} />
+                    </label>
+                    <label>
+                      Tipo de midia
+                      <select
+                        value={item.mediaType}
+                        onChange={(event) => updateCarouselMediaType(item.id, event.target.value as HomeCarouselMediaType)}
+                      >
+                        <option value="image">Imagem</option>
+                        <option value="youtube">Video no YouTube</option>
+                      </select>
+                    </label>
+                    <label className="admin-span-2">
+                      Resumo
+                      <textarea value={item.summary} onChange={(event) => updateCarousel(item.id, { summary: event.target.value })} />
+                    </label>
+
+                    {item.mediaType === 'youtube' ? (
+                      <>
+                        <label className="admin-span-2">
+                          Link do YouTube
+                          <input
+                            value={item.youtubeUrl}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                carousel: current.carousel.map((entry) =>
+                                  entry.id === item.id ? normalizeYoutubeSlide(entry, event.target.value) : entry,
+                                ),
+                              }))
+                            }
+                            placeholder="https://www.youtube.com/watch?v=..."
+                          />
+                        </label>
+                        <p className={`admin-media-hint admin-span-2${videoId ? ' is-valid' : ''}`}>
+                          {videoId
+                            ? 'Video reconhecido: a capa do YouTube sera usada no carrossel.'
+                            : 'Cole um link valido do YouTube para gerar capa e link automaticamente.'}
+                        </p>
+                        {youtubeWatchUrl ? (
+                          <a className="admin-external-link admin-span-2" href={youtubeWatchUrl} target="_blank" rel="noreferrer">
+                            Abrir video no YouTube
+                          </a>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <label>
+                          Link de destino
+                          <input value={item.link} onChange={(event) => updateCarousel(item.id, { link: event.target.value })} />
+                        </label>
+                        <label className="admin-span-2">
+                          URL da imagem
+                          <input
+                            value={item.imageUrl}
+                            onChange={(event) => updateCarousel(item.id, { imageUrl: event.target.value })}
+                            placeholder="https://..."
+                          />
+                        </label>
+                        <label className="admin-span-2">
+                          Upload local (base64)
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (event) => {
+                              const file = event.target.files?.[0];
+                              if (!file) return;
+                              const imageUrl = await readFileAsDataUrl(file);
+                              updateCarousel(item.id, { imageUrl });
+                              event.currentTarget.value = '';
+                            }}
+                          />
+                        </label>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </details>
+            );
+          })}
         </div>
       </section>
 
@@ -317,45 +447,56 @@ export const AdminPage = () => {
         </div>
 
         <div className="admin-list">
-          {sortedNews.map((item) => (
-            <article className="admin-item" key={item.id}>
-              <div className="admin-item-head">
-                <h3>{item.title || 'Noticia sem titulo'}</h3>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      news: current.news.filter((entry) => entry.id !== item.id),
-                    }))
-                  }
-                >
-                  Remover
-                </button>
+          {sortedNews.map((item, index) => (
+            <details className="admin-item admin-fold-item" key={item.id} open={index < 3}>
+              <summary className="admin-fold-summary">
+                <div>
+                  <h3>{item.title || 'Noticia sem titulo'}</h3>
+                  <p>{item.date}</p>
+                </div>
+                <span>{index < 3 ? 'Aberto' : 'Fechado'}</span>
+              </summary>
+
+              <div className="admin-fold-body">
+                <div className="admin-item-head admin-item-actions">
+                  <div />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraft((current) => ({
+                        ...current,
+                        news: current.news.filter((entry) => entry.id !== item.id),
+                      }))
+                    }
+                  >
+                    Remover
+                  </button>
+                </div>
+
+                <div className="admin-grid">
+                  <label>
+                    Titulo
+                    <input value={item.title} onChange={(event) => updateNews(item.id, { title: event.target.value })} />
+                  </label>
+                  <label>
+                    Data
+                    <input type="date" value={item.date} onChange={(event) => updateNews(item.id, { date: event.target.value })} />
+                  </label>
+                  <label className="admin-span-2">
+                    Resumo
+                    <textarea value={item.summary} onChange={(event) => updateNews(item.id, { summary: event.target.value })} />
+                  </label>
+                  <label className="admin-span-2">
+                    Reacao
+                    <textarea value={item.reaction} onChange={(event) => updateNews(item.id, { reaction: event.target.value })} />
+                  </label>
+                  <label className="admin-span-2">
+                    Link
+                    <input value={item.link} onChange={(event) => updateNews(item.id, { link: event.target.value })} />
+                  </label>
+                </div>
               </div>
-              <div className="admin-grid">
-                <label>
-                  Titulo
-                  <input value={item.title} onChange={(event) => updateNews(item.id, { title: event.target.value })} />
-                </label>
-                <label>
-                  Data
-                  <input type="date" value={item.date} onChange={(event) => updateNews(item.id, { date: event.target.value })} />
-                </label>
-                <label className="admin-span-2">
-                  Resumo
-                  <textarea value={item.summary} onChange={(event) => updateNews(item.id, { summary: event.target.value })} />
-                </label>
-                <label className="admin-span-2">
-                  Reacao
-                  <textarea value={item.reaction} onChange={(event) => updateNews(item.id, { reaction: event.target.value })} />
-                </label>
-                <label className="admin-span-2">
-                  Link
-                  <input value={item.link} onChange={(event) => updateNews(item.id, { link: event.target.value })} />
-                </label>
-              </div>
-            </article>
+            </details>
           ))}
         </div>
       </section>

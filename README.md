@@ -177,6 +177,7 @@ npm run dev:web
 
 - A capa do site fica antes do mapa, em `apps/web/src/components/PresentationSection.tsx`.
 - Todas as imagens da pasta `apps/web/src/assets/carousel` entram automaticamente no carrossel.
+- No `/dev/admin`, cada slide aceita imagem (URL/upload local) ou link de video do YouTube (o video fica no YouTube, sem upload no site).
 - Logos e links do rodape ficam em `apps/web/src/components/SiteFooter.tsx`.
 
 ## Deploy

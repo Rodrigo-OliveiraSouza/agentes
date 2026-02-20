@@ -3,6 +3,7 @@ import { MapCanvas } from '../components/MapCanvas';
 import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
 import { homeContentUpdateEvent, loadHomeContent, type HomeContent } from '../lib/homeContent';
+import { extractYouTubeVideoId } from '../lib/youtube';
 import type { GeoJsonResponse, IndicatorDefinition, IndicatorPoint } from '../lib/types';
 
 const MINI_INDICATOR_PREFERENCE = ['population', 'gdp', 'literacy_rate'];
@@ -11,6 +12,8 @@ const toValidLink = (href: string): string => {
   if (!href.trim()) return '/mapas';
   return href;
 };
+
+const isExternalLink = (href: string): boolean => /^https?:\/\//i.test(href.trim());
 
 const formatDateLabel = (isoDate: string): string => {
   if (!isoDate.trim()) return 'Data nao informada';
@@ -152,6 +155,11 @@ export const LandingPage = () => {
   const feedNews = newsByRecency.slice(0, 9);
 
   const currentSlide = content.carousel[activeSlide] ?? content.carousel[0];
+  const currentSlideLink = currentSlide
+    ? toValidLink(currentSlide.mediaType === 'youtube' ? currentSlide.youtubeUrl || currentSlide.link : currentSlide.link)
+    : '/mapas';
+  const currentSlideIsExternal = isExternalLink(currentSlideLink);
+  const currentSlideVideoId = currentSlide ? extractYouTubeVideoId(currentSlide.youtubeUrl || currentSlide.link) : null;
 
   return (
     <div className="landing-shell">
@@ -180,12 +188,20 @@ export const LandingPage = () => {
 
           <div className="landing-carousel">
             {currentSlide ? (
-              <a href={toValidLink(currentSlide.link)} className="landing-carousel-item">
+              <a
+                href={currentSlideLink}
+                className="landing-carousel-item"
+                target={currentSlideIsExternal ? '_blank' : undefined}
+                rel={currentSlideIsExternal ? 'noreferrer' : undefined}
+              >
                 <img src={currentSlide.imageUrl} alt={currentSlide.title} />
                 <div className="landing-carousel-overlay">
                   <p className="landing-kicker">Destaque</p>
                   <h3>{currentSlide.title}</h3>
                   <p>{currentSlide.summary}</p>
+                  {currentSlide.mediaType === 'youtube' && currentSlideVideoId ? (
+                    <span className="landing-carousel-badge">Video no YouTube</span>
+                  ) : null}
                 </div>
               </a>
             ) : (
@@ -227,7 +243,13 @@ export const LandingPage = () => {
                 <h3>{featuredNews.title}</h3>
                 <p>{featuredNews.summary}</p>
                 <blockquote>{featuredNews.reaction}</blockquote>
-                <a href={toValidLink(featuredNews.link)}>Ler destaque</a>
+                <a
+                  href={toValidLink(featuredNews.link)}
+                  target={isExternalLink(featuredNews.link) ? '_blank' : undefined}
+                  rel={isExternalLink(featuredNews.link) ? 'noreferrer' : undefined}
+                >
+                  Ler destaque
+                </a>
               </article>
             ) : (
               <div className="news-lead-empty">Nenhuma noticia cadastrada.</div>
@@ -239,7 +261,13 @@ export const LandingPage = () => {
                   <p className="news-date">{formatDateLabel(item.date)}</p>
                   <h3>{item.title}</h3>
                   <p>{item.summary}</p>
-                  <a href={toValidLink(item.link)}>Abrir noticia</a>
+                  <a
+                    href={toValidLink(item.link)}
+                    target={isExternalLink(item.link) ? '_blank' : undefined}
+                    rel={isExternalLink(item.link) ? 'noreferrer' : undefined}
+                  >
+                    Abrir noticia
+                  </a>
                 </article>
               ))}
               {!secondaryNews.length ? <div className="news-side-empty">Adicione mais noticias para ampliar o destaque.</div> : null}
@@ -252,7 +280,13 @@ export const LandingPage = () => {
                 <article key={`${item.id}-reaction`} className={`reaction-card reaction-card-tone-${(index % 4) + 1}`}>
                   <p className="reaction-kicker">Reacao da comunidade</p>
                   <p className="reaction-text">{item.reaction}</p>
-                  <a href={toValidLink(item.link)}>{item.title}</a>
+                  <a
+                    href={toValidLink(item.link)}
+                    target={isExternalLink(item.link) ? '_blank' : undefined}
+                    rel={isExternalLink(item.link) ? 'noreferrer' : undefined}
+                  >
+                    {item.title}
+                  </a>
                 </article>
               ))}
             </div>
@@ -264,7 +298,13 @@ export const LandingPage = () => {
                 <p className="news-date">{formatDateLabel(item.date)}</p>
                 <h3>{item.title}</h3>
                 <p>{item.summary}</p>
-                <a href={toValidLink(item.link)}>Detalhes</a>
+                <a
+                  href={toValidLink(item.link)}
+                  target={isExternalLink(item.link) ? '_blank' : undefined}
+                  rel={isExternalLink(item.link) ? 'noreferrer' : undefined}
+                >
+                  Detalhes
+                </a>
               </article>
             ))}
           </div>

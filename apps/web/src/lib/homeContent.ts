@@ -1,10 +1,15 @@
 import slideOne from '../assets/carousel/slide-01-ministerio.svg';
 import slideTwo from '../assets/carousel/slide-02-mapa.svg';
 import slideThree from '../assets/carousel/slide-03-painel.svg';
+import { buildYouTubeThumbnailUrl, buildYouTubeWatchUrl, extractYouTubeVideoId } from './youtube';
+
+export type HomeCarouselMediaType = 'image' | 'youtube';
 
 export type HomeCarouselItem = {
   id: string;
+  mediaType: HomeCarouselMediaType;
   imageUrl: string;
+  youtubeUrl: string;
   title: string;
   summary: string;
   link: string;
@@ -37,21 +42,27 @@ export const defaultHomeContent: HomeContent = {
   carousel: [
     {
       id: 'slide-01',
+      mediaType: 'image',
       imageUrl: slideOne,
+      youtubeUrl: '',
       title: 'Acoes territoriais',
       summary: 'Divulgacao de projetos, mobilizacoes e eventos com foco em equidade racial.',
       link: 'https://pnit.infinity.dev.br/',
     },
     {
       id: 'slide-02',
+      mediaType: 'image',
       imageUrl: slideTwo,
+      youtubeUrl: '',
       title: 'Mapa de indicadores',
       summary: 'Leitura rapida de indicadores e comparacao territorial para tomada de decisao.',
       link: '/mapas',
     },
     {
       id: 'slide-03',
+      mediaType: 'image',
       imageUrl: slideThree,
+      youtubeUrl: '',
       title: 'Transparencia publica',
       summary: 'Noticias, reacoes da comunidade e acesso simplificado a dados territoriais.',
       link: 'https://plataformadiversifica.vercel.app/',
@@ -103,13 +114,25 @@ const sanitizeContent = (value: unknown): HomeContent => {
     updatedAt: payload.updatedAt?.trim() || defaultHomeContent.updatedAt,
     carousel: Array.isArray(payload.carousel) && payload.carousel.length
       ? payload.carousel
-          .map((item, index) => ({
-            id: item.id?.trim() || `slide-${index + 1}`,
-            imageUrl: item.imageUrl?.trim() || defaultHomeContent.carousel[index % defaultHomeContent.carousel.length].imageUrl,
-            title: item.title?.trim() || `Slide ${index + 1}`,
-            summary: item.summary?.trim() || 'Sem resumo informado.',
-            link: item.link?.trim() || '/mapas',
-          }))
+          .map((item, index) => {
+            const fallback = defaultHomeContent.carousel[index % defaultHomeContent.carousel.length];
+            const mediaType: HomeCarouselMediaType = item.mediaType === 'youtube' ? 'youtube' : 'image';
+            const parsedVideoId = extractYouTubeVideoId(item.youtubeUrl?.trim() || item.link?.trim() || '');
+            const youtubeUrl = parsedVideoId ? buildYouTubeWatchUrl(parsedVideoId) : '';
+            const imageUrl = mediaType === 'youtube'
+              ? (parsedVideoId ? buildYouTubeThumbnailUrl(parsedVideoId) : fallback.imageUrl)
+              : item.imageUrl?.trim() || fallback.imageUrl;
+
+            return {
+              id: item.id?.trim() || `slide-${index + 1}`,
+              mediaType,
+              imageUrl,
+              youtubeUrl,
+              title: item.title?.trim() || `Slide ${index + 1}`,
+              summary: item.summary?.trim() || 'Sem resumo informado.',
+              link: mediaType === 'youtube' ? (youtubeUrl || item.link?.trim() || '/mapas') : item.link?.trim() || '/mapas',
+            };
+          })
           .slice(0, 12)
       : cloneContent(defaultHomeContent).carousel,
     news: Array.isArray(payload.news) && payload.news.length
@@ -156,4 +179,3 @@ export const resetHomeContent = (): void => {
 };
 
 export const homeContentUpdateEvent = STORAGE_EVENT;
-

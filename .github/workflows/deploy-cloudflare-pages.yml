@@ -37,6 +37,19 @@ jobs:
       - name: Build web app
         run: npm run build -w @ibge-map/web
 
+      - name: Validate Cloudflare access
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          RESPONSE="$(curl -sS -X GET 'https://api.cloudflare.com/client/v4/accounts/9f4dc5a8b1976f87c5af207e1218b331/pages/projects/agentes' \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H 'Content-Type: application/json')"
+          if ! echo "${RESPONSE}" | grep -q '"success":true'; then
+            echo "::error::Cloudflare API validation failed for account/project. Response: ${RESPONSE}"
+            exit 1
+          fi
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:

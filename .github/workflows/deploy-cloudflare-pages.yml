@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  deployments: write
+
 concurrency:
   group: cloudflare-pages-production
   cancel-in-progress: true
@@ -38,4 +42,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 9f4dc5a8b1976f87c5af207e1218b331
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           command: pages deploy apps/web/dist --project-name=${{ env.CLOUDFLARE_PAGES_PROJECT }} --branch=main

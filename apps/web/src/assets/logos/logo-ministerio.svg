@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="120" viewBox="0 0 360 120" role="img" aria-label="Ministério da Igualdade Racial">
+  <defs>
+    <linearGradient id="logoA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f4c81"/>
+      <stop offset="100%" stop-color="#2a6f97"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="120" rx="18" fill="#ffffff"/>
+  <circle cx="56" cy="60" r="34" fill="url(#logoA)"/>
+  <path d="M42 66 C54 36, 70 36, 82 66" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <text x="102" y="56" fill="#173753" font-size="19" font-family="Segoe UI, Arial, sans-serif" font-weight="700">Ministério</text>
+  <text x="102" y="84" fill="#2a6f97" font-size="16" font-family="Segoe UI, Arial, sans-serif">Igualdade Racial</text>
+</svg>

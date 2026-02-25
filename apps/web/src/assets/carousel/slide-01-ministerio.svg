@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Ministério da Igualdade Racial">
+  <defs>
+    <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d3b66"/>
+      <stop offset="100%" stop-color="#145da0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg1)"/>
+  <circle cx="1280" cy="180" r="240" fill="#ffffff" fill-opacity="0.08"/>
+  <circle cx="240" cy="760" r="260" fill="#ffffff" fill-opacity="0.06"/>
+  <text x="120" y="360" fill="#ffffff" font-size="72" font-family="Segoe UI, Arial, sans-serif" font-weight="700">
+    Ministério da Igualdade Racial
+  </text>
+  <text x="120" y="440" fill="#dff4ff" font-size="38" font-family="Segoe UI, Arial, sans-serif">
+    Apresentação institucional da plataforma territorial
+  </text>
+</svg>

@@ -1,0 +1,14 @@
+name = "ibge-map-api"
+main = "src/index.ts"
+compatibility_date = "2026-02-18"
+workers_dev = true
+
+[vars]
+CACHE_TTL_SECONDS = "600"
+RATE_LIMIT_PER_MINUTE = "120"
+
+# Use `wrangler secret put DATABASE_URL`
+# [[kv_namespaces]]
+# binding = "CACHE_KV"
+# id = "<your-kv-namespace-id>"
+

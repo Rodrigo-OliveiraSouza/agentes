@@ -42,11 +42,24 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
-          RESPONSE="$(curl -sS -X GET 'https://api.cloudflare.com/client/v4/accounts/9f4dc5a8b1976f87c5af207e1218b331/pages/projects/agentes' \
+          if [ -z "${CF_API_TOKEN}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is empty or not set."
+            exit 1
+          fi
+
+          VERIFY_RESPONSE="$(curl -sS -X GET 'https://api.cloudflare.com/client/v4/user/tokens/verify' \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H 'Content-Type: application/json')"
-          if ! echo "${RESPONSE}" | grep -q '"success":true'; then
-            echo "::error::Cloudflare API validation failed for account/project. Response: ${RESPONSE}"
+          if ! echo "${VERIFY_RESPONSE}" | grep -q '"success":true'; then
+            echo "::error::Cloudflare token verify failed. Response: $(echo "${VERIFY_RESPONSE}" | tr -d '\n')"
+            exit 1
+          fi
+
+          PROJECT_RESPONSE="$(curl -sS -X GET 'https://api.cloudflare.com/client/v4/accounts/9f4dc5a8b1976f87c5af207e1218b331/pages/projects/agentes' \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H 'Content-Type: application/json')"
+          if ! echo "${PROJECT_RESPONSE}" | grep -q '"success":true'; then
+            echo "::error::Cloudflare project access failed. Response: $(echo "${PROJECT_RESPONSE}" | tr -d '\n')"
             exit 1
           fi
 

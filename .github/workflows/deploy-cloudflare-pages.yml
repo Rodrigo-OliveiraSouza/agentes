@@ -50,7 +50,7 @@ jobs:
           VERIFY_RESPONSE="$(curl -sS -X GET 'https://api.cloudflare.com/client/v4/user/tokens/verify' \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H 'Content-Type: application/json')"
-          if ! echo "${VERIFY_RESPONSE}" | grep -q '"success":true'; then
+          if ! echo "${VERIFY_RESPONSE}" | grep -Eq '"success"[[:space:]]*:[[:space:]]*true'; then
             echo "::error::Cloudflare token verify failed. Response: $(echo "${VERIFY_RESPONSE}" | tr -d '\n')"
             exit 1
           fi
@@ -58,7 +58,7 @@ jobs:
           PROJECT_RESPONSE="$(curl -sS -X GET 'https://api.cloudflare.com/client/v4/accounts/9f4dc5a8b1976f87c5af207e1218b331/pages/projects/agentes' \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H 'Content-Type: application/json')"
-          if ! echo "${PROJECT_RESPONSE}" | grep -q '"success":true'; then
+          if ! echo "${PROJECT_RESPONSE}" | grep -Eq '"success"[[:space:]]*:[[:space:]]*true'; then
             echo "::error::Cloudflare project access failed. Response: $(echo "${PROJECT_RESPONSE}" | tr -d '\n')"
             exit 1
           fi

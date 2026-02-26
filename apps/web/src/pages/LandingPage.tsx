@@ -335,10 +335,6 @@ export const LandingPage = () => {
         <div className="portal-header-inner">
           <div className="portal-header-top">
             <div className="portal-header-row-inner portal-header-top-inner">
-              <a href="#" className="portal-top-brand" aria-label="E-SINAPIR - atalhos institucionais">
-                <BrandMark className="portal-top-brand-mark" />
-                <span>E-SINAPIR</span>
-              </a>
               <div className="portal-header-actions">
                 <a href="/mapas" aria-label="MAPA" className="portal-btn portal-btn-primary" target="_blank" rel="noreferrer">
                   MAPA

@@ -4789,6 +4789,8 @@ body.portal-mobile-menu-open {
 .portal-shell.portal-editorial {
   background: #ffffff;
   color: #2d2119;
+  --editorial-strip-orange: #de7f1a;
+  --editorial-strip-green: #57a53c;
 }
 
 .portal-shell.portal-editorial .portal-hero-strip-section {
@@ -4796,7 +4798,7 @@ body.portal-mobile-menu-open {
   margin: 0;
   position: relative;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--editorial-strip-orange);
   padding: 14px 0 12px;
   border-radius: 0;
 }
@@ -4853,7 +4855,7 @@ body.portal-mobile-menu-open {
 .portal-shell.portal-editorial .portal-top-news-slider-section {
   position: relative;
   padding: 18px min(5vw, 52px) 34px;
-  background: #2336f4;
+  background: var(--editorial-strip-green);
   border-bottom-left-radius: 58% 18%;
   border-bottom-right-radius: 58% 18%;
   overflow: hidden;

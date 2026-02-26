@@ -67,6 +67,13 @@ const BrandMark = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const HERO_IMAGE_SLIDES = [
+  { src: '/imagens/grafismo_caracterisco.png', alt: 'Grafismo caracteristico' },
+  { src: '/imagens/quilombo.png', alt: 'Territorio quilombola' },
+  { src: '/imagens/referencias_historicas.png', alt: 'Referencias historicas' },
+  { src: '/imagens/Samba_caracterisco.png', alt: 'Manifestacao cultural de samba' },
+] as const;
+
 const toValidLink = (href: string): string => {
   if (!href.trim()) return '/mapas';
   return href;
@@ -84,6 +91,7 @@ const formatDateLabel = (isoDate: string): string => {
 export const LandingPage = () => {
   const [content, setContent] = useState<HomeContent>(() => loadHomeContent());
   const [activeSlide, setActiveSlide] = useState(0);
+  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [catalog, setCatalog] = useState<IndicatorDefinition[]>([]);
   const [activeTheme, setActiveTheme] = useState<ThemeKey>('educacao');
   const [activeThemeIndicator, setActiveThemeIndicator] = useState('');
@@ -121,6 +129,19 @@ export const LandingPage = () => {
     if (activeSlide < content.carousel.length) return;
     setActiveSlide(0);
   }, [activeSlide, content.carousel.length]);
+
+  useEffect(() => {
+    if (HERO_IMAGE_SLIDES.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setActiveHeroSlide((current) => (current + 1) % HERO_IMAGE_SLIDES.length);
+    }, 5600);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (activeHeroSlide < HERO_IMAGE_SLIDES.length) return;
+    setActiveHeroSlide(0);
+  }, [activeHeroSlide]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -275,6 +296,8 @@ export const LandingPage = () => {
     return filteredNews;
   }, [filteredNews, activeTheme]);
 
+  const topNewsItems = useMemo(() => themeNews.slice(0, 8), [themeNews]);
+
   const featuredNews = themeNews[0] ?? null;
   const feedNews = themeNews.slice(0, 9);
 
@@ -307,7 +330,7 @@ export const LandingPage = () => {
   const headerClassName = `portal-header portal-header-v2${isHeaderScrolled ? ' is-scrolled' : ''}${isMobileMenuOpen ? ' menu-open' : ''}`;
 
   return (
-    <div className="portal-shell" data-theme={activeTheme}>
+    <div className="portal-shell portal-editorial" data-theme={activeTheme}>
       <header className={headerClassName}>
         <div className="portal-header-inner">
           <div className="portal-header-top">
@@ -444,6 +467,59 @@ export const LandingPage = () => {
           ))}
         </nav>
       </aside>
+
+      <section className="portal-hero-strip-section" aria-label="Slide principal">
+        <div className="portal-hero-strip-track" style={{ transform: `translateX(-${activeHeroSlide * 100}%)` }}>
+          {HERO_IMAGE_SLIDES.map((item) => (
+            <div key={item.src} className="portal-hero-strip-item">
+              <img src={item.src} alt={item.alt} loading="lazy" />
+            </div>
+          ))}
+        </div>
+        {HERO_IMAGE_SLIDES.length > 1 ? (
+          <div className="portal-hero-strip-dots">
+            {HERO_IMAGE_SLIDES.map((item, index) => (
+              <button
+                key={`hero-${item.src}`}
+                type="button"
+                className={index === activeHeroSlide ? 'active' : ''}
+                onClick={() => setActiveHeroSlide(index)}
+                aria-label={`Imagem ${index + 1}`}
+              />
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="portal-top-news-slider-section" aria-label="Slide de noticias em destaque">
+        <div className="portal-top-news-slider-inner">
+          {topNewsItems.length ? (
+            <div className="portal-top-news-slider-track">
+              {topNewsItems.map((item, index) => {
+                const href = toValidLink(item.link);
+                const external = isExternalLink(item.link);
+                const fallbackImage = content.carousel[index % content.carousel.length]?.imageUrl ?? '';
+                const cardImage = item.imageUrl.trim() || fallbackImage;
+                return (
+                  <a
+                    key={`top-news-${item.id}`}
+                    href={href}
+                    className="portal-top-news-card"
+                    target={external ? '_blank' : undefined}
+                    rel={external ? 'noreferrer' : undefined}
+                  >
+                    {cardImage ? <img src={cardImage} alt={item.title} /> : null}
+                    <div className="portal-top-news-card-body">
+                      <h3>{item.title}</h3>
+                      <p className="portal-news-date">{formatDateLabel(item.date)}</p>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      </section>
 
       <section className="portal-highlight-section">
         <div className="portal-highlight-inner">
@@ -604,23 +680,9 @@ export const LandingPage = () => {
         <div className="portal-news-inner">
           <div className="portal-news-headline">
             <p className="portal-news-kicker">Cobertura temática</p>
-            <h2>Notícias e reações - {activeThemeDefinition.label}</h2>
-            <p>Blocos atualizados com leitura rápida de contexto, percepção social e acesso ao conteúdo completo.</p>
+            <h2>Notícias - {activeThemeDefinition.label}</h2>
+            <p>Blocos atualizados com leitura rápida de contexto e acesso ao conteúdo completo.</p>
           </div>
-
-          {feedNews.length ? (
-            <div className="portal-reaction-grid">
-              {feedNews.slice(0, 3).map((item, index) => (
-                <article key={`${item.id}-reaction`} className={`portal-reaction-card portal-reaction-tone-${(index % 3) + 1}`}>
-                  <p className="portal-news-date">{formatDateLabel(item.date)}</p>
-                  <h3>{item.title}</h3>
-                  <p>{item.reaction}</p>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="portal-empty-text">Nenhuma reação cadastrada para o tema atual.</p>
-          )}
 
           <div className="portal-news-grid">
             {feedNews.map((item, index) => {

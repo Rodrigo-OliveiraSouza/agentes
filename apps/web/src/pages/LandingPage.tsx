@@ -312,8 +312,6 @@ export const LandingPage = () => {
     return null;
   }, [content.mediaItems, activeTheme]);
 
-  const featuredVideoLink = featuredVideo ? toValidLink(featuredVideo.youtubeUrl || featuredVideo.link) : '';
-  const featuredVideoIsExternal = featuredVideo ? isExternalLink(featuredVideoLink) : false;
   const featuredVideoId = featuredVideo ? extractYouTubeVideoId(featuredVideo.youtubeUrl || featuredVideo.link) : null;
   const supportMaterials = useMemo(() => {
     const materialItems = content.mediaItems.filter((item) => item.type !== 'video');
@@ -465,12 +463,14 @@ export const LandingPage = () => {
       </aside>
 
       <section className="portal-hero-strip-section" aria-label="Slide principal">
-        <div className="portal-hero-strip-track" style={{ transform: `translateX(-${activeHeroSlide * 100}%)` }}>
-          {HERO_IMAGE_SLIDES.map((item) => (
-            <div key={item.src} className="portal-hero-strip-item">
-              <img src={item.src} alt={item.alt} loading="lazy" />
-            </div>
-          ))}
+        <div className="portal-hero-strip-track">
+          <div className="portal-hero-strip-item">
+            <img
+              src={HERO_IMAGE_SLIDES[activeHeroSlide]?.src ?? HERO_IMAGE_SLIDES[0].src}
+              alt={HERO_IMAGE_SLIDES[activeHeroSlide]?.alt ?? HERO_IMAGE_SLIDES[0].alt}
+              loading="lazy"
+            />
+          </div>
         </div>
         {HERO_IMAGE_SLIDES.length > 1 ? (
           <div className="portal-hero-strip-dots">
@@ -580,10 +580,6 @@ export const LandingPage = () => {
         <div className="portal-video-inner">
           <div>
             <h2>Vídeo em destaque - {activeThemeDefinition.label}</h2>
-            <p>
-              Conteúdo audiovisual conectado ao projeto. O vídeo permanece no YouTube e aqui exibimos apenas referência
-              e acesso.
-            </p>
           </div>
           {featuredVideo && featuredVideoId ? (
             <div className="portal-video-grid">
@@ -596,14 +592,6 @@ export const LandingPage = () => {
                   allowFullScreen
                 />
               </div>
-              <article className="portal-video-card">
-                <p className="portal-news-date">Material audiovisual</p>
-                <h3>{featuredVideo.title}</h3>
-                <p>{featuredVideo.description}</p>
-                <a href={featuredVideoLink} target={featuredVideoIsExternal ? '_blank' : undefined} rel="noreferrer">
-                  Abrir no YouTube
-                </a>
-              </article>
             </div>
           ) : (
             <p className="portal-empty-text">Nenhum vídeo cadastrado para o tema atual.</p>

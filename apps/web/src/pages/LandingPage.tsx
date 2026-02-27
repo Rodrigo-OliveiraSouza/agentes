@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { MapCanvas } from '../components/MapCanvas';
 import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
-import { homeContentUpdateEvent, loadHomeContent, type HomeContent, type HomeThemeKey } from '../lib/homeContent';
+import {
+  homeContentUpdateEvent,
+  loadHomeContent,
+  syncHomeContentFromApi,
+  type HomeContent,
+  type HomeThemeKey,
+} from '../lib/homeContent';
 import { extractYouTubeVideoId } from '../lib/youtube';
 import type { GeoJsonResponse, IndicatorDefinition, IndicatorPoint } from '../lib/types';
 
@@ -127,13 +133,22 @@ export const LandingPage = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let alive = true;
     const refresh = () => {
       setContent(loadHomeContent());
     };
 
+    const hydrateFromApi = async () => {
+      const remote = await syncHomeContentFromApi();
+      if (!alive || !remote) return;
+      setContent(remote);
+    };
+
+    hydrateFromApi();
     window.addEventListener('storage', refresh);
     window.addEventListener(homeContentUpdateEvent, refresh as EventListener);
     return () => {
+      alive = false;
       window.removeEventListener('storage', refresh);
       window.removeEventListener(homeContentUpdateEvent, refresh as EventListener);
     };

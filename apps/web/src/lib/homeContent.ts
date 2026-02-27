@@ -1,6 +1,7 @@
 import slideOne from '../assets/carousel/slide-01-ministerio.svg';
 import slideTwo from '../assets/carousel/slide-02-mapa.svg';
 import slideThree from '../assets/carousel/slide-03-painel.svg';
+import { api } from './api';
 import { buildYouTubeThumbnailUrl, buildYouTubeWatchUrl, extractYouTubeVideoId } from './youtube';
 
 export type HomeCarouselMediaType = 'image' | 'youtube';
@@ -308,12 +309,49 @@ export const loadHomeContent = (): HomeContent => {
   }
 };
 
-export const saveHomeContent = (content: HomeContent): void => {
-  if (typeof window === 'undefined') return;
-
+const persistLocalHomeContent = (content: HomeContent): HomeContent => {
   const normalized = sanitizeContent(content);
+  if (typeof window === 'undefined') {
+    return normalized;
+  }
+
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
   window.dispatchEvent(new CustomEvent(STORAGE_EVENT));
+  return normalized;
+};
+
+export const saveHomeContent = async (
+  content: HomeContent,
+): Promise<{ normalized: HomeContent; remoteSaved: boolean; remoteUpdatedAt: string | null }> => {
+  const normalized = persistLocalHomeContent(content);
+
+  try {
+    const result = await api.saveHomeContent(normalized);
+    return {
+      normalized,
+      remoteSaved: Boolean(result.ok),
+      remoteUpdatedAt: result.updatedAt ?? null,
+    };
+  } catch (error) {
+    console.warn('Falha ao salvar conteudo da home no banco. Mantendo armazenamento local.', error);
+    return {
+      normalized,
+      remoteSaved: false,
+      remoteUpdatedAt: null,
+    };
+  }
+};
+
+export const syncHomeContentFromApi = async (): Promise<HomeContent | null> => {
+  try {
+    const payload = await api.homeContent();
+    if (!payload.item) return null;
+    const normalized = sanitizeContent(payload.item);
+    return persistLocalHomeContent(normalized);
+  } catch (error) {
+    console.warn('Falha ao sincronizar conteudo da home com a API. Usando conteudo local.', error);
+    return null;
+  }
 };
 
 export const resetHomeContent = (): void => {

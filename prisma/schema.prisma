@@ -105,3 +105,12 @@ model CacheRequest {
   @@map("cache_requests")
 }
 
+model HomeContent {
+  key       String   @id
+  payload   Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@map("home_contents")
+}
+

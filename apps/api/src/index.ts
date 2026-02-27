@@ -6,6 +6,7 @@ import { indicatorsRoute } from './routes/indicators';
 import { dataRoute } from './routes/data';
 import { geojsonRoute } from './routes/geojson';
 import { cityProfileRoute } from './routes/city-profile';
+import { homeContentRoute } from './routes/home-content';
 import { toErrorResponse } from './lib/errors';
 import { rateLimitMiddleware } from './lib/rate-limit';
 import type { AppBindings } from './lib/types';
@@ -17,7 +18,7 @@ app.use(
   '*',
   cors({
     origin: '*',
-    allowMethods: ['GET', 'OPTIONS'],
+    allowMethods: ['GET', 'PUT', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
   }),
 );
@@ -28,7 +29,7 @@ app.get('/', (c) => {
     ok: true,
     service: 'ibge-map-api',
     message: 'API online. Use /health ou /api/*',
-    routes: ['/health', '/api/territories', '/api/indicators', '/api/data', '/api/geojson', '/api/city-profile'],
+    routes: ['/health', '/api/territories', '/api/indicators', '/api/data', '/api/geojson', '/api/city-profile', '/api/home-content'],
   });
 });
 
@@ -45,6 +46,7 @@ app.route('/api/indicators', indicatorsRoute);
 app.route('/api/data', dataRoute);
 app.route('/api/geojson', geojsonRoute);
 app.route('/api/city-profile', cityProfileRoute);
+app.route('/api/home-content', homeContentRoute);
 
 app.notFound((c) => {
   return c.json(

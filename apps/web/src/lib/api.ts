@@ -51,6 +51,18 @@ type RequestOptions = {
   cacheTtlSeconds?: number;
 };
 
+type HomeContentResponse = {
+  item: Record<string, unknown> | null;
+  updatedAt: string | null;
+  persisted: boolean;
+};
+
+type SaveHomeContentResponse = {
+  ok: boolean;
+  updatedAt: string | null;
+  persisted: boolean;
+};
+
 type CachedEntry<T> = {
   expiresAt: number;
   payload: T;
@@ -137,6 +149,24 @@ const request = async <T>(path: string, params?: RequestParams, options?: Reques
   }
 };
 
+const requestMutation = async <T>(path: string, method: 'PUT' | 'POST' | 'PATCH' | 'DELETE', body: unknown): Promise<T> => {
+  const url = buildUrl(path);
+  const response = await fetch(url, {
+    method,
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ error: { message: 'Erro desconhecido' } }));
+    throw new Error(payload?.error?.message ?? 'Erro na API');
+  }
+
+  return (await response.json()) as T;
+};
+
 export const api = {
   indicators: async (): Promise<IndicatorDefinition[]> => {
     const payload = await request<{ items: IndicatorDefinition[] }>('/api/indicators', undefined, {
@@ -175,5 +205,13 @@ export const api = {
 
   cityProfile: async (cityCode: string): Promise<CityProfileResponse> => {
     return request<CityProfileResponse>('/api/city-profile', { cityCode }, { cacheTtlSeconds: 86_400 });
+  },
+
+  homeContent: async (): Promise<HomeContentResponse> => {
+    return request<HomeContentResponse>('/api/home-content');
+  },
+
+  saveHomeContent: async (content: unknown): Promise<SaveHomeContentResponse> => {
+    return requestMutation<SaveHomeContentResponse>('/api/home-content', 'PUT', { content });
   },
 };

@@ -1,10 +1,10 @@
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   HOME_THEME_OPTIONS,
   defaultHomeContent,
   loadHomeContent,
-  resetHomeContent,
   saveHomeContent,
+  syncHomeContentFromApi,
   type HomeCarouselItem,
   type HomeCarouselMediaType,
   type HomeMediaItem,
@@ -125,6 +125,24 @@ export const AdminPage = () => {
   const [includeGeneralTheme, setIncludeGeneralTheme] = useState(false);
   const [mediaFilter, setMediaFilter] = useState<AdminMediaFilter>('video');
   const [quickSearch, setQuickSearch] = useState('');
+
+  useEffect(() => {
+    if (!isUnlocked) return;
+    let alive = true;
+
+    const hydrateFromApi = async () => {
+      const remote = await syncHomeContentFromApi();
+      if (!alive || !remote) return;
+      const snapshot = JSON.stringify(remote);
+      setDraft(remote);
+      setLastSavedSnapshot(snapshot);
+    };
+
+    hydrateFromApi();
+    return () => {
+      alive = false;
+    };
+  }, [isUnlocked]);
 
   const sortedNews = useMemo(
     () => [...draft.news].sort((a, b) => (a.date < b.date ? 1 : -1)),
@@ -404,24 +422,32 @@ export const AdminPage = () => {
     window.setTimeout(() => setStatus(''), 2500);
   };
 
-  const saveDraft = () => {
+  const saveDraft = async () => {
     const payload = {
       ...draft,
       updatedAt: new Date().toISOString().slice(0, 10),
     };
-    saveHomeContent(payload);
-    setDraft(payload);
-    setLastSavedSnapshot(JSON.stringify(payload));
-    setStatus('Conteúdo salvo com sucesso.');
+
+    const result = await saveHomeContent(payload);
+    setDraft(result.normalized);
+    if (result.remoteSaved) {
+      setLastSavedSnapshot(JSON.stringify(result.normalized));
+      setStatus('Conteudo salvo no banco e no cache local.');
+    } else {
+      setStatus('Falha ao salvar no banco. Conteudo mantido apenas no cache local.');
+    }
     window.setTimeout(() => setStatus(''), 2500);
   };
 
-  const restoreDefault = () => {
-    resetHomeContent();
-    const restored = loadHomeContent();
-    setDraft(restored);
-    setLastSavedSnapshot(JSON.stringify(restored));
-    setStatus('Conteúdo restaurado para o padrão.');
+  const restoreDefault = async () => {
+    const result = await saveHomeContent(defaultHomeContent);
+    setDraft(result.normalized);
+    if (result.remoteSaved) {
+      setLastSavedSnapshot(JSON.stringify(result.normalized));
+      setStatus('Conteudo restaurado para o padrao no banco e no cache local.');
+    } else {
+      setStatus('Conteudo restaurado apenas no cache local (falha no banco).');
+    }
     window.setTimeout(() => setStatus(''), 2500);
   };
 
@@ -1045,23 +1071,32 @@ export const AdminPage = () => {
       <section id="admin-mvp" className="admin-card">
         <h2>Limite do MVP</h2>
         <p>
-          Este admin salva dados no `localStorage` do navegador atual. Para publicar alterações globais para todos os
-          usuários, o próximo passo é conectar este painel a um endpoint da API (Worker + Neon/KV).
+          Este admin salva no cache local e tenta persistir no banco via endpoint `/api/home-content`.
+          Quando o banco estiver indisponivel, o conteudo continua local e o painel mostra aviso de falha no save remoto.
         </p>
         <button
           type="button"
-          onClick={() => {
-            saveHomeContent(defaultHomeContent);
+          onClick={async () => {
+            const result = await saveHomeContent(defaultHomeContent);
             const persisted = loadHomeContent();
             setDraft(persisted);
-            setLastSavedSnapshot(JSON.stringify(persisted));
-            setStatus('Conteúdo padrão regravado no armazenamento local.');
+            if (result.remoteSaved) {
+              setLastSavedSnapshot(JSON.stringify(persisted));
+              setStatus('Conteudo padrao regravado no banco e no armazenamento local.');
+            } else {
+              setStatus('Padrao regravado apenas no armazenamento local (falha no banco).');
+            }
             window.setTimeout(() => setStatus(''), 2500);
           }}
         >
-          Regravar padrão no storage local
+          Regravar padrão
         </button>
       </section>
     </div>
   );
 };
+
+
+
+
+

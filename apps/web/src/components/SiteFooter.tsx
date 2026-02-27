@@ -16,7 +16,7 @@ const footerLinks = [
 
 const policyLinks = [
   { label: 'Acessibilidade', href: '#governanca-acessibilidade' },
-  { label: 'Política de Dados', href: '#governanca-politica-dados' },
+  { label: 'Politica de Dados', href: '#governanca-politica-dados' },
   { label: 'LGPD', href: '#governanca-lgpd' },
 ];
 
@@ -25,14 +25,15 @@ export const SiteFooter = () => {
     <footer className="site-footer">
       <div className="footer-inner">
         <div className="footer-text-block">
-          <p>Ministério da Igualdade Racial | Plataforma de indicadores territoriais com dados públicos.</p>
-          <div className="footer-policy-links">
+          <p className="footer-org-name">Ministerio da Igualdade Racial</p>
+          <p>Plataforma de indicadores territoriais com dados publicos.</p>
+          <nav className="footer-policy-links" aria-label="Links de governanca">
             {policyLinks.map((item) => (
               <a key={item.label} href={item.href}>
                 {item.label}
               </a>
             ))}
-          </div>
+          </nav>
         </div>
         <div className="footer-logo-links">
           {footerLinks.map((item) => (

@@ -16,7 +16,5 @@
   <circle cx="730" cy="510" r="22" fill="#ffd166"/>
   <circle cx="980" cy="350" r="22" fill="#ffd166"/>
   <circle cx="1270" cy="490" r="22" fill="#ffd166"/>
-  <text x="170" y="730" fill="#ffffff" font-size="48" font-family="Segoe UI, Arial, sans-serif" font-weight="700">
-    Camadas, filtros e leitura territorial em tempo real
-  </text>
 </svg>
+

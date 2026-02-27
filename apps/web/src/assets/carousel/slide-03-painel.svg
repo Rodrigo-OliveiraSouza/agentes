@@ -13,7 +13,5 @@
   <rect x="220" y="410" width="790" height="56" rx="12" fill="#ffffff" fill-opacity="0.22"/>
   <rect x="220" y="490" width="790" height="56" rx="12" fill="#ffffff" fill-opacity="0.22"/>
   <rect x="220" y="570" width="540" height="130" rx="12" fill="#ffffff" fill-opacity="0.24"/>
-  <text x="220" y="760" fill="#ffe7ef" font-size="44" font-family="Segoe UI, Arial, sans-serif" font-weight="700">
-    Cidade selecionada com índices, tabela e gráfico
-  </text>
 </svg>
+

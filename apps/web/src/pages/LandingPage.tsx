@@ -94,11 +94,14 @@ export const LandingPage = () => {
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [catalog, setCatalog] = useState<IndicatorDefinition[]>([]);
   const [activeTheme, setActiveTheme] = useState<ThemeKey>('educacao');
+  const [pendingTheme, setPendingTheme] = useState<ThemeKey | null>(null);
+  const [contentRefreshStage, setContentRefreshStage] = useState<'idle' | 'out' | 'in'>('idle');
   const [activeThemeIndicator, setActiveThemeIndicator] = useState('');
   const [geojsonPayload, setGeojsonPayload] = useState<GeoJsonResponse | null>(null);
   const [points, setPoints] = useState<IndicatorPoint[]>([]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [newsQuery, setNewsQuery] = useState('');
+  const [isShowingAllNews, setIsShowingAllNews] = useState(false);
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -202,6 +205,31 @@ export const LandingPage = () => {
     return THEME_MAPS.find((item) => item.key === activeTheme) ?? THEME_MAPS[0];
   }, [activeTheme]);
 
+  const requestThemeRefresh = (nextTheme: ThemeKey) => {
+    if (nextTheme === activeTheme && contentRefreshStage === 'idle') return;
+    if (nextTheme === pendingTheme) return;
+    setPendingTheme(nextTheme);
+    setContentRefreshStage('out');
+  };
+
+  useEffect(() => {
+    if (contentRefreshStage !== 'out' || !pendingTheme) return;
+    const timer = window.setTimeout(() => {
+      setActiveTheme(pendingTheme);
+      setPendingTheme(null);
+      setContentRefreshStage('in');
+    }, 170);
+    return () => window.clearTimeout(timer);
+  }, [contentRefreshStage, pendingTheme]);
+
+  useEffect(() => {
+    if (contentRefreshStage !== 'in') return;
+    const timer = window.setTimeout(() => {
+      setContentRefreshStage('idle');
+    }, 230);
+    return () => window.clearTimeout(timer);
+  }, [contentRefreshStage]);
+
   const themeIndicatorOptions = useMemo(() => {
     const preferred = activeThemeDefinition.indicators
       .map((slug) => indicatorsBySlug.get(slug))
@@ -276,7 +304,13 @@ export const LandingPage = () => {
     return points.find((item) => item.code === selectedCode) ?? null;
   }, [points, selectedCode]);
 
-  const newsByRecency = useMemo(() => [...content.news].sort((a, b) => (a.date < b.date ? 1 : -1)), [content.news]);
+  const newsByRecency = useMemo(() => {
+    const parseDate = (value: string): number => {
+      const parsed = Date.parse(value);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    };
+    return [...content.news].sort((a, b) => parseDate(b.date) - parseDate(a.date));
+  }, [content.news]);
 
   const filteredNews = useMemo(() => {
     const term = newsQuery.trim().toLowerCase();
@@ -296,10 +330,26 @@ export const LandingPage = () => {
     return filteredNews;
   }, [filteredNews, activeTheme]);
 
-  const topNewsItems = useMemo(() => themeNews.slice(0, 8), [themeNews]);
+  const primaryNews = themeNews[0] ?? null;
+  const secondaryNews = themeNews[1] ?? null;
+  const remainingNews = useMemo(() => themeNews.slice(2), [themeNews]);
+  const initialGridNews = useMemo(() => remainingNews.slice(0, 6), [remainingNews]);
+  const hasMoreRemainingNews = remainingNews.length > 6;
+  const gridNews = isShowingAllNews ? remainingNews : initialGridNews;
+  const secondaryNewsImage = useMemo(() => {
+    if (!secondaryNews) return '';
+    const fallbackImage = content.carousel.length ? (content.carousel[1 % content.carousel.length]?.imageUrl ?? '') : '';
+    return secondaryNews.imageUrl.trim() || fallbackImage;
+  }, [secondaryNews, content.carousel]);
+  const primaryNewsThemeLabel = useMemo(() => {
+    if (!primaryNews) return activeThemeDefinition.label;
+    if (primaryNews.theme === 'geral') return 'Geral';
+    return THEME_MAPS.find((item) => item.key === primaryNews.theme)?.label ?? activeThemeDefinition.label;
+  }, [primaryNews, activeThemeDefinition.label]);
 
-  const featuredNews = themeNews[0] ?? null;
-  const feedNews = themeNews.slice(0, 9);
+  useEffect(() => {
+    setIsShowingAllNews(false);
+  }, [themeNews]);
 
   const featuredVideo = useMemo(() => {
     const videoItems = content.mediaItems.filter((item) => item.type === 'video');
@@ -326,6 +376,7 @@ export const LandingPage = () => {
   const currentSlideIsExternal = isExternalLink(currentSlideLink);
   const currentSlideVideoId = currentSlide ? extractYouTubeVideoId(currentSlide.youtubeUrl || currentSlide.link) : null;
   const headerClassName = `portal-header portal-header-v2${isHeaderScrolled ? ' is-scrolled' : ''}${isMobileMenuOpen ? ' menu-open' : ''}`;
+  const contentRefreshClassName = contentRefreshStage === 'idle' ? '' : ` portal-content-refresh-${contentRefreshStage}`;
 
   return (
     <div className="portal-shell portal-editorial" data-theme={activeTheme}>
@@ -371,7 +422,7 @@ export const LandingPage = () => {
                       key={theme.key}
                       type="button"
                       className={theme.key === activeTheme ? 'active' : ''}
-                      onClick={() => setActiveTheme(theme.key)}
+                      onClick={() => requestThemeRefresh(theme.key)}
                       aria-pressed={theme.key === activeTheme}
                     >
                       {theme.label}
@@ -451,7 +502,7 @@ export const LandingPage = () => {
               type="button"
               className={theme.key === activeTheme ? 'active' : ''}
               onClick={() => {
-                setActiveTheme(theme.key);
+                requestThemeRefresh(theme.key);
                 setIsMobileMenuOpen(false);
               }}
               aria-pressed={theme.key === activeTheme}
@@ -464,7 +515,7 @@ export const LandingPage = () => {
 
       <section className="portal-hero-strip-section" aria-label="Slide principal">
         <div className="portal-hero-strip-track">
-          <div className="portal-hero-strip-item">
+          <div className={`portal-hero-strip-item${contentRefreshClassName}`}>
             <img
               src={HERO_IMAGE_SLIDES[activeHeroSlide]?.src ?? HERO_IMAGE_SLIDES[0].src}
               alt={HERO_IMAGE_SLIDES[activeHeroSlide]?.alt ?? HERO_IMAGE_SLIDES[0].alt}
@@ -487,94 +538,123 @@ export const LandingPage = () => {
         ) : null}
       </section>
 
-      <section className="portal-top-news-slider-section" aria-label="Slide de noticias em destaque">
-        <div className="portal-top-news-slider-inner">
-          {topNewsItems.length ? (
-            <div className="portal-top-news-slider-track">
-              {topNewsItems.map((item, index) => {
+      <section className="portal-highlight-section">
+        <div className="portal-highlight-inner">
+          <article className={`portal-news-primary${contentRefreshClassName}`}>
+            {primaryNews ? (
+              <a
+                href={toValidLink(primaryNews.link)}
+                className="portal-news-primary-link"
+                target={isExternalLink(primaryNews.link) ? '_blank' : undefined}
+                rel={isExternalLink(primaryNews.link) ? 'noreferrer' : undefined}
+              >
+                {primaryNews.imageUrl.trim() ? <img src={primaryNews.imageUrl} alt={primaryNews.title} /> : null}
+                <div className="portal-news-primary-body">
+                  <p className="portal-news-primary-theme">{primaryNewsThemeLabel}</p>
+                  <p className="portal-news-date">{formatDateLabel(primaryNews.date)}</p>
+                  <h3>{primaryNews.title}</h3>
+                  {primaryNews.summary.trim() ? <p>{primaryNews.summary}</p> : null}
+                </div>
+              </a>
+            ) : (
+              <p className="portal-empty-text">Nenhuma noticia cadastrada para o tema atual.</p>
+            )}
+          </article>
+
+          <div className="portal-highlight-side">
+            <div className="portal-news-green-area">
+              <div className="portal-carousel">
+                {currentSlide ? (
+                  <a
+                    href={currentSlideLink}
+                    className={`portal-carousel-link${contentRefreshClassName}`}
+                    target={currentSlideIsExternal ? '_blank' : undefined}
+                    rel={currentSlideIsExternal ? 'noreferrer' : undefined}
+                  >
+                    <img src={currentSlide.imageUrl} alt={currentSlide.title} />
+                  </a>
+                ) : (
+                  <div className="portal-carousel-empty">Nenhum slide disponivel.</div>
+                )}
+                {content.carousel.length > 1 ? (
+                  <div className="portal-carousel-dots">
+                    {content.carousel.map((item, index) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={index === activeSlide ? 'active' : ''}
+                        onClick={() => setActiveSlide(index)}
+                        aria-label={`Slide ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {secondaryNews ? (
+              <article className={`portal-news-secondary${contentRefreshClassName}`}>
+                {secondaryNewsImage ? <img src={secondaryNewsImage} alt={secondaryNews.title} /> : null}
+                <h3>{secondaryNews.title}</h3>
+                <p className="portal-news-date">{formatDateLabel(secondaryNews.date)}</p>
+                {secondaryNews.summary.trim() ? <p>{secondaryNews.summary}</p> : null}
+                <a
+                  href={toValidLink(secondaryNews.link)}
+                  target={isExternalLink(secondaryNews.link) ? '_blank' : undefined}
+                  rel={isExternalLink(secondaryNews.link) ? 'noreferrer' : undefined}
+                >
+                  Ler noticia completa
+                </a>
+              </article>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+
+      <section className="portal-news-section">
+        <div className="portal-news-inner">
+          <div className="portal-news-headline">
+            <p className="portal-news-kicker">Cobertura tematica</p>
+            <h2>Noticias - {activeThemeDefinition.label}</h2>
+          </div>
+
+          {gridNews.length ? (
+            <div className="portal-news-feed-grid">
+              {gridNews.map((item, index) => {
+                const fallbackImage = content.carousel[index % content.carousel.length]?.imageUrl;
+                const cardImage = item.imageUrl.trim() || fallbackImage || '';
                 const href = toValidLink(item.link);
                 const external = isExternalLink(item.link);
-                const fallbackImage = content.carousel[index % content.carousel.length]?.imageUrl ?? '';
-                const cardImage = item.imageUrl.trim() || fallbackImage;
+
                 return (
-                  <a
-                    key={`top-news-${item.id}`}
-                    href={href}
-                    className="portal-top-news-card"
-                    target={external ? '_blank' : undefined}
-                    rel={external ? 'noreferrer' : undefined}
-                  >
-                    {cardImage ? <img src={cardImage} alt={item.title} /> : null}
-                    <div className="portal-top-news-card-body">
-                      <h3>{item.title}</h3>
-                      <p className="portal-news-date">{formatDateLabel(item.date)}</p>
-                    </div>
-                  </a>
+                  <article key={item.id} className="portal-news-feed-card">
+                    <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined}>
+                      {cardImage ? <img src={cardImage} alt={item.title} /> : null}
+                      <div>
+                        <p className="portal-news-date">{formatDateLabel(item.date)}</p>
+                        <h3>{item.title}</h3>
+                        {item.summary.trim() ? <p>{item.summary}</p> : null}
+                      </div>
+                    </a>
+                  </article>
                 );
               })}
             </div>
           ) : null}
+
+          {hasMoreRemainingNews ? (
+            <button
+              type="button"
+              className="portal-news-more-button"
+              onClick={() => setIsShowingAllNews((current) => !current)}
+            >
+              {isShowingAllNews ? 'Ver menos' : 'Ver mais'}
+            </button>
+          ) : null}
         </div>
       </section>
 
-      <section className="portal-highlight-section">
-        <div className="portal-highlight-inner">
-          <div className="portal-carousel">
-            {currentSlide ? (
-              <a
-                href={currentSlideLink}
-                className="portal-carousel-link"
-                target={currentSlideIsExternal ? '_blank' : undefined}
-                rel={currentSlideIsExternal ? 'noreferrer' : undefined}
-              >
-                <img src={currentSlide.imageUrl} alt={currentSlide.title} />
-                <div className="portal-carousel-overlay">
-                  <h2>{currentSlide.title}</h2>
-                  <p>{currentSlide.summary}</p>
-                  {currentSlide.mediaType === 'youtube' && currentSlideVideoId ? <span>Vídeo no YouTube</span> : null}
-                </div>
-              </a>
-            ) : (
-              <div className="portal-carousel-empty">Nenhum slide disponível.</div>
-            )}
-            {content.carousel.length > 1 ? (
-              <div className="portal-carousel-dots">
-                {content.carousel.map((item, index) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={index === activeSlide ? 'active' : ''}
-                    onClick={() => setActiveSlide(index)}
-                    aria-label={`Slide ${index + 1}`}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="portal-featured-news">
-            <h2>Notícia em destaque - {activeThemeDefinition.label}</h2>
-            {featuredNews ? (
-              <article>
-                {featuredNews.imageUrl.trim() ? <img src={featuredNews.imageUrl} alt={featuredNews.title} /> : null}
-                <p className="portal-news-date">{formatDateLabel(featuredNews.date)}</p>
-                <h3>{featuredNews.title}</h3>
-                <p>{featuredNews.summary}</p>
-                <blockquote>{featuredNews.reaction}</blockquote>
-                <a
-                  href={toValidLink(featuredNews.link)}
-                  target={isExternalLink(featuredNews.link) ? '_blank' : undefined}
-                  rel={isExternalLink(featuredNews.link) ? 'noreferrer' : undefined}
-                >
-                  Ler notícia completa
-                </a>
-              </article>
-            ) : (
-              <p className="portal-empty-text">Nenhuma notícia cadastrada para o tema atual.</p>
-            )}
-          </div>
-        </div>
-      </section>
 
       <section className="portal-video-section">
         <div className="portal-video-inner">
@@ -660,40 +740,6 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section className="portal-news-section">
-        <div className="portal-news-inner">
-          <div className="portal-news-headline">
-            <p className="portal-news-kicker">Cobertura temática</p>
-            <h2>Notícias - {activeThemeDefinition.label}</h2>
-            <p>Blocos atualizados com leitura rápida de contexto e acesso ao conteúdo completo.</p>
-          </div>
-
-          <div className="portal-news-grid">
-            {feedNews.map((item, index) => {
-              const fallbackImage = content.carousel[index % content.carousel.length]?.imageUrl;
-              const cardImage = item.imageUrl.trim() || fallbackImage;
-              return (
-                <article key={item.id} className="portal-news-card">
-                  {cardImage ? <img src={cardImage} alt={item.title} /> : null}
-                  <div>
-                    <p className="portal-news-date">{formatDateLabel(item.date)}</p>
-                    <h3>{item.title}</h3>
-                    <p>{item.summary}</p>
-                    <a
-                      href={toValidLink(item.link)}
-                      target={isExternalLink(item.link) ? '_blank' : undefined}
-                      rel={isExternalLink(item.link) ? 'noreferrer' : undefined}
-                    >
-                      Ler mais
-                    </a>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       <section className="portal-materials-section">
         <div className="portal-materials-inner">
           <h2>Fotos, folders e comunicados</h2>
@@ -726,3 +772,7 @@ export const LandingPage = () => {
     </div>
   );
 };
+
+
+
+

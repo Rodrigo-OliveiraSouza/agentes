@@ -656,7 +656,6 @@ export const LandingPage = () => {
       <section className="portal-news-section">
         <div className="portal-news-inner">
           <div className="portal-news-headline">
-            <p className="portal-news-kicker">Cobertura tematica</p>
             <h2>Noticias - {activeThemeDefinition.label}</h2>
           </div>
 

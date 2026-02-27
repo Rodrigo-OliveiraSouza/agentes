@@ -14,7 +14,10 @@ type MapCanvasProps = {
   onSelect: (code: string) => void;
   legendScaleMode: 'linear' | 'quartile' | 'percentile';
   themeMode: 'institutional' | 'dark';
+  colorPalette?: MapColorPalette;
 };
+
+export type MapColorPalette = 'terra' | 'verde' | 'azul' | 'roxo';
 
 type CentroidPoint = {
   code: string;
@@ -63,13 +66,106 @@ const clamp = (value: number, min: number, max: number): number => {
   return Math.min(max, Math.max(min, value));
 };
 
+const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+  const normalized = hex.replace('#', '').trim();
+  if (normalized.length !== 6) return null;
+  const value = Number.parseInt(normalized, 16);
+  if (Number.isNaN(value)) return null;
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  };
+};
+
+const rgbToHex = (r: number, g: number, b: number): string => {
+  const clampChannel = (channel: number) => clamp(Math.round(channel), 0, 255);
+  const toHex = (channel: number) => clampChannel(channel).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+
+const mixHexColor = (fromHex: string, toHex: string, ratio: number): string => {
+  const from = hexToRgb(fromHex);
+  const to = hexToRgb(toHex);
+  if (!from || !to) return fromHex;
+  const t = clamp(ratio, 0, 1);
+  return rgbToHex(
+    from.r + (to.r - from.r) * t,
+    from.g + (to.g - from.g) * t,
+    from.b + (to.b - from.b) * t,
+  );
+};
+
+const colorFromStops = (stops: string[], ratio: number): string => {
+  if (!stops.length) return '#000000';
+  if (stops.length === 1) return stops[0];
+  const t = clamp(ratio, 0, 1);
+  const scaled = t * (stops.length - 1);
+  const index = Math.floor(scaled);
+  const next = Math.min(stops.length - 1, index + 1);
+  const localRatio = scaled - index;
+  return mixHexColor(stops[index], stops[next], localRatio);
+};
+
 const quantileFrom = (sorted: number[], p: number): number => {
   if (!sorted.length) return 0;
   const index = Math.min(sorted.length - 1, Math.max(0, Math.floor((sorted.length - 1) * p)));
   return sorted[index];
 };
 
-const HEATMAP_COLORS = ['#f7ead9', '#ebd2b7', '#deb78f', '#cf9965', '#be7d46', '#a86532', '#844b24', '#5f3117'];
+type PaletteConfig = {
+  choroplethStops: string[];
+  heatmapStops: string[];
+  bubbleFill: string;
+  bubbleStroke: string;
+  stroke: string;
+  heatmapStroke: string;
+  selectedStroke: string;
+  noData: string;
+};
+
+const MAP_PALETTES: Record<MapColorPalette, PaletteConfig> = {
+  terra: {
+    choroplethStops: ['#f4e4d1', '#e6c7a0', '#d9aa78', '#c68752', '#9a582e'],
+    heatmapStops: ['#f7ead9', '#ebd2b7', '#deb78f', '#cf9965', '#be7d46', '#a86532', '#844b24', '#5f3117'],
+    bubbleFill: '#b56a38',
+    bubbleStroke: '#8a4d28',
+    stroke: '#7b5e4a',
+    heatmapStroke: '#5f4332',
+    selectedStroke: '#cf6b3a',
+    noData: '#e7d9c9',
+  },
+  verde: {
+    choroplethStops: ['#edf6ea', '#cce6c2', '#9ed18f', '#6eb66a', '#3f8b45'],
+    heatmapStops: ['#edf6ea', '#d7eccf', '#c0e2b4', '#a7d696', '#8bc877', '#67b05a', '#4c9446', '#326f35'],
+    bubbleFill: '#58a65f',
+    bubbleStroke: '#2f7241',
+    stroke: '#4f7a58',
+    heatmapStroke: '#3f6948',
+    selectedStroke: '#2f9b9f',
+    noData: '#dfe8d8',
+  },
+  azul: {
+    choroplethStops: ['#e8f2fb', '#c8def4', '#9ec4e8', '#6ea7d8', '#3e79b5'],
+    heatmapStops: ['#edf5fe', '#d9eafb', '#bedbf7', '#9bc7f0', '#79b1e6', '#5e98d7', '#447dbd', '#2e629f'],
+    bubbleFill: '#4f95d8',
+    bubbleStroke: '#2f6798',
+    stroke: '#4f6c89',
+    heatmapStroke: '#3f5c78',
+    selectedStroke: '#c45e2b',
+    noData: '#dde6f0',
+  },
+  roxo: {
+    choroplethStops: ['#f3e9f9', '#dfc7ef', '#c59fdf', '#a576ca', '#7d4ea8'],
+    heatmapStops: ['#f6eefb', '#ead9f6', '#d9bdef', '#c59fe5', '#ae80d8', '#9662c7', '#7d4aa9', '#623483'],
+    bubbleFill: '#9a6ac8',
+    bubbleStroke: '#6f4693',
+    stroke: '#705c84',
+    heatmapStroke: '#5d4970',
+    selectedStroke: '#c4662f',
+    noData: '#e4d8ee',
+  },
+};
 
 const UF_BY_IBGE_CODE: Record<string, string> = {
   '11': 'RO',
@@ -149,6 +245,7 @@ export const MapCanvas = ({
   onSelect,
   legendScaleMode,
   themeMode,
+  colorPalette = 'terra',
 }: MapCanvasProps) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
   const { isLoaded, loadError } = useJsApiLoader({
@@ -199,6 +296,10 @@ export const MapCanvas = ({
     [sortedValues],
   );
 
+  const paletteConfig = useMemo(() => {
+    return MAP_PALETTES[colorPalette] ?? MAP_PALETTES.terra;
+  }, [colorPalette]);
+
   const ratioByScale = useCallback(
     (value: number): number => {
       if (sortedValues.length <= 1) return 0.5;
@@ -233,14 +334,11 @@ export const MapCanvas = ({
     (value: number, heatmapMode: boolean): string => {
       const ratio = ratioByScale(value);
       if (heatmapMode) {
-        const index = Math.round(ratio * (HEATMAP_COLORS.length - 1));
-        return HEATMAP_COLORS[index];
+        return colorFromStops(paletteConfig.heatmapStops, ratio);
       }
-      const hue = 42 - ratio * 20;
-      const lightness = 88 - ratio * 50;
-      return `hsl(${Math.round(hue)}, 68%, ${Math.round(lightness)}%)`;
+      return colorFromStops(paletteConfig.choroplethStops, ratio);
     },
-    [ratioByScale],
+    [ratioByScale, paletteConfig],
   );
 
   const centroidPoints = useMemo<CentroidPoint[]>(() => {
@@ -307,7 +405,7 @@ export const MapCanvas = ({
       const isSelected = selectedCode === code;
       const fillColor =
         value === null
-          ? '#e7d9c9'
+          ? paletteConfig.noData
           : mode === 'heatmap'
             ? areaColor(value, true)
             : areaColor(value, false);
@@ -321,7 +419,11 @@ export const MapCanvas = ({
       return {
         fillColor,
         fillOpacity,
-        strokeColor: isSelected ? '#cf6b3a' : mode === 'heatmap' ? '#5f4332' : '#7b5e4a',
+        strokeColor: isSelected
+          ? paletteConfig.selectedStroke
+          : mode === 'heatmap'
+            ? paletteConfig.heatmapStroke
+            : paletteConfig.stroke,
         strokeWeight: boundaryWeightFor(mode, currentZoom, isSelected),
         strokeOpacity: mode === 'heatmap' ? 0.88 : 0.78,
         visible: true,
@@ -384,9 +486,9 @@ export const MapCanvas = ({
           map,
           center: { lat: item.lat, lng: item.lng },
           radius: radiusFor(item.value, max, currentZoom),
-          fillColor: '#b56a38',
+          fillColor: paletteConfig.bubbleFill,
           fillOpacity: 0.34,
-          strokeColor: '#8a4d28',
+          strokeColor: paletteConfig.bubbleStroke,
           strokeOpacity: 0.85,
           strokeWeight: 1,
         });
@@ -422,6 +524,7 @@ export const MapCanvas = ({
     centroidPoints,
     currentZoom,
     areaColor,
+    paletteConfig,
     rankByCode,
     average,
     points.length,
@@ -439,11 +542,11 @@ export const MapCanvas = ({
 
   const legendGradient = useMemo(() => {
     if (mode === 'heatmap') {
-      return 'linear-gradient(90deg, #f7ead9, #ebd2b7, #deb78f, #cf9965, #be7d46, #a86532, #844b24, #5f3117)';
+      return `linear-gradient(90deg, ${paletteConfig.heatmapStops.join(', ')})`;
     }
 
-    return 'linear-gradient(90deg, #f4e4d1, #dcb48b, #c98a58, #9a582e)';
-  }, [mode]);
+    return `linear-gradient(90deg, ${paletteConfig.choroplethStops.join(', ')})`;
+  }, [mode, paletteConfig]);
 
   useEffect(() => {
     const map = mapRef.current;

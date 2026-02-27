@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MapCanvas } from '../components/MapCanvas';
+import { MapCanvas, type MapColorPalette } from '../components/MapCanvas';
 import { SidePanel } from '../components/SidePanel';
 import { MetricsChartsPanel } from '../components/MetricsChartsPanel';
 import { SiteFooter } from '../components/SiteFooter';
@@ -30,8 +30,19 @@ const legendScaleLabel: Record<LegendScaleMode, string> = {
   percentile: 'Percentil',
 };
 
+const mapPaletteLabel: Record<MapColorPalette, string> = {
+  terra: 'Terracota',
+  verde: 'Verde',
+  azul: 'Azul',
+  roxo: 'Roxo',
+};
+
 const modeOptions: ViewMode[] = ['choropleth', 'bubbles', 'heatmap', 'clusters'];
 const territoryCollator = new Intl.Collator('pt-BR', { sensitivity: 'base' });
+
+const isMapPalette = (value: string | null): value is MapColorPalette => {
+  return value === 'terra' || value === 'verde' || value === 'azul' || value === 'roxo';
+};
 
 const sortTerritoriesByName = (items: Territory[]): Territory[] => {
   return [...items].sort((a, b) => territoryCollator.compare(a.name, b.name));
@@ -326,6 +337,7 @@ export const MapPage = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [themeMode, setThemeMode] = useState<ThemeMode>('institutional');
   const [legendScaleMode, setLegendScaleMode] = useState<LegendScaleMode>('linear');
+  const [mapColorPalette, setMapColorPalette] = useState<MapColorPalette>('terra');
   const [shareNotice, setShareNotice] = useState<string>('');
 
   const selectedIndicator = useMemo(
@@ -392,6 +404,11 @@ export const MapPage = () => {
     const legendParam = query.get('legend');
     if (legendParam === 'linear' || legendParam === 'quartile' || legendParam === 'percentile') {
       setLegendScaleMode(legendParam);
+    }
+
+    const paletteParam = query.get('palette');
+    if (isMapPalette(paletteParam)) {
+      setMapColorPalette(paletteParam);
     }
   }, [setFilter]);
 
@@ -665,9 +682,10 @@ export const MapPage = () => {
     params.set('view', viewMode);
     params.set('theme', themeMode);
     params.set('legend', legendScaleMode);
+    params.set('palette', mapColorPalette);
     const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
     window.history.replaceState(null, '', nextUrl);
-  }, [indicator, level, year, regionCode, ufCode, municipalityCode, search, viewMode, themeMode, legendScaleMode]);
+  }, [indicator, level, year, regionCode, ufCode, municipalityCode, search, viewMode, themeMode, legendScaleMode, mapColorPalette]);
 
   const notifyShare = (message: string) => {
     setShareNotice(message);
@@ -826,6 +844,16 @@ export const MapPage = () => {
               <button type="button" onClick={handleExportGeoJson}>Baixar mapa (GeoJSON)</button>
               <button type="button" onClick={handleExportReport}>Baixar relatório</button>
               <button type="button" onClick={togglePresentationMode}>Modo apresentação</button>
+              <label className="map-actions-select">
+                Paleta
+                <select value={mapColorPalette} onChange={(event) => setMapColorPalette(event.target.value as MapColorPalette)}>
+                  {Object.entries(mapPaletteLabel).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="map-actions-select">
                 Escala
                 <select value={legendScaleMode} onChange={(event) => setLegendScaleMode(event.target.value as LegendScaleMode)}>
@@ -992,6 +1020,7 @@ export const MapPage = () => {
                 onSelect={handleMapSelect}
                 legendScaleMode={legendScaleMode}
                 themeMode={themeMode}
+                colorPalette={mapColorPalette}
               />
             </section>
 

@@ -357,6 +357,11 @@ export const LandingPage = () => {
   const initialGridNews = useMemo(() => remainingNews.slice(0, 6), [remainingNews]);
   const hasMoreRemainingNews = remainingNews.length > 6;
   const gridNews = isShowingAllNews ? remainingNews : initialGridNews;
+  const primaryNewsImage = useMemo(() => {
+    if (!primaryNews) return '';
+    const fallbackImage = content.carousel.length ? (content.carousel[0]?.imageUrl ?? '') : '';
+    return primaryNews.imageUrl.trim() || fallbackImage;
+  }, [primaryNews, content.carousel]);
   const secondaryNewsImage = useMemo(() => {
     if (!secondaryNews) return '';
     const fallbackImage = content.carousel.length ? (content.carousel[1 % content.carousel.length]?.imageUrl ?? '') : '';
@@ -569,7 +574,7 @@ export const LandingPage = () => {
                 target={isExternalLink(primaryNews.link) ? '_blank' : undefined}
                 rel={isExternalLink(primaryNews.link) ? 'noreferrer' : undefined}
               >
-                {primaryNews.imageUrl.trim() ? <img src={primaryNews.imageUrl} alt={primaryNews.title} /> : null}
+                {primaryNewsImage ? <img src={primaryNewsImage} alt={primaryNews.title} /> : null}
                 <div className="portal-news-primary-body">
                   <p className="portal-news-primary-theme">{primaryNewsThemeLabel}</p>
                   <p className="portal-news-date">{formatDateLabel(primaryNews.date)}</p>

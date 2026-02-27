@@ -5038,7 +5038,7 @@ body.portal-mobile-menu-open {
   display: grid;
   grid-template-columns: minmax(0, 1.28fr) minmax(0, 0.92fr);
   gap: 32px;
-  align-items: start;
+  align-items: stretch;
   padding-top: 24px;
   padding-bottom: 32px;
   border-bottom: 1px solid var(--editorial-border-soft);
@@ -5106,6 +5106,7 @@ body.portal-mobile-menu-open {
   border-radius: 10px;
   background: linear-gradient(165deg, rgba(120, 26, 94, 0.08) 0%, rgba(255, 255, 255, 0.98) 68%);
   padding: 16px;
+  height: 100%;
 }
 
 .portal-shell.portal-editorial .portal-news-primary h2 {
@@ -5116,7 +5117,9 @@ body.portal-mobile-menu-open {
 }
 
 .portal-shell.portal-editorial .portal-news-primary-link {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   text-decoration: none;
   color: inherit;
 }

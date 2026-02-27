@@ -88,6 +88,25 @@ const formatDateLabel = (isoDate: string): string => {
   return parsed.toLocaleDateString('pt-BR');
 };
 
+const parseNewsDateValue = (rawDate: string): number => {
+  const normalized = rawDate.trim();
+  if (!normalized) return 0;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    const [year, month, day] = normalized.split('-').map((value) => Number(value));
+    return Date.UTC(year, month - 1, day);
+  }
+
+  const brDate = normalized.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (brDate) {
+    const [, day, month, year] = brDate;
+    return Date.UTC(Number(year), Number(month) - 1, Number(day));
+  }
+
+  const parsed = Date.parse(normalized);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
 export const LandingPage = () => {
   const [content, setContent] = useState<HomeContent>(() => loadHomeContent());
   const [activeSlide, setActiveSlide] = useState(0);
@@ -304,13 +323,10 @@ export const LandingPage = () => {
     return points.find((item) => item.code === selectedCode) ?? null;
   }, [points, selectedCode]);
 
-  const newsByRecency = useMemo(() => {
-    const parseDate = (value: string): number => {
-      const parsed = Date.parse(value);
-      return Number.isNaN(parsed) ? 0 : parsed;
-    };
-    return [...content.news].sort((a, b) => parseDate(b.date) - parseDate(a.date));
-  }, [content.news]);
+  const newsByRecency = useMemo(
+    () => [...content.news].sort((a, b) => parseNewsDateValue(b.date) - parseNewsDateValue(a.date)),
+    [content.news],
+  );
 
   const filteredNews = useMemo(() => {
     const term = newsQuery.trim().toLowerCase();
@@ -330,9 +346,14 @@ export const LandingPage = () => {
     return filteredNews;
   }, [filteredNews, activeTheme]);
 
-  const primaryNews = themeNews[0] ?? null;
-  const secondaryNews = themeNews[1] ?? null;
-  const remainingNews = useMemo(() => themeNews.slice(2), [themeNews]);
+  const orderedThemeNews = useMemo(
+    () => [...themeNews].sort((a, b) => parseNewsDateValue(b.date) - parseNewsDateValue(a.date)),
+    [themeNews],
+  );
+
+  const primaryNews = orderedThemeNews[0] ?? null;
+  const secondaryNews = orderedThemeNews[1] ?? null;
+  const remainingNews = useMemo(() => orderedThemeNews.slice(2), [orderedThemeNews]);
   const initialGridNews = useMemo(() => remainingNews.slice(0, 6), [remainingNews]);
   const hasMoreRemainingNews = remainingNews.length > 6;
   const gridNews = isShowingAllNews ? remainingNews : initialGridNews;
@@ -349,7 +370,7 @@ export const LandingPage = () => {
 
   useEffect(() => {
     setIsShowingAllNews(false);
-  }, [themeNews]);
+  }, [orderedThemeNews]);
 
   const featuredVideo = useMemo(() => {
     const videoItems = content.mediaItems.filter((item) => item.type === 'video');

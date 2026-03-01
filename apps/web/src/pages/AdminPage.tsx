@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   HOME_THEME_OPTIONS,
   compareHomeNewsItems,
@@ -240,6 +240,19 @@ export const AdminPage = () => {
   const [mediaFilter, setMediaFilter] = useState<AdminMediaFilter>('video');
   const [quickSearch, setQuickSearch] = useState('');
   const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null);
+  const statusTimeoutRef = useRef<number | null>(null);
+
+  const announceStatus = (message: string) => {
+    setStatus(message);
+    if (typeof window === 'undefined') return;
+    if (statusTimeoutRef.current !== null) {
+      window.clearTimeout(statusTimeoutRef.current);
+    }
+    statusTimeoutRef.current = window.setTimeout(() => {
+      setStatus('');
+      statusTimeoutRef.current = null;
+    }, 3200);
+  };
 
   useEffect(() => {
     if (!isUnlocked) return;
@@ -258,6 +271,15 @@ export const AdminPage = () => {
       alive = false;
     };
   }, [isUnlocked]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window === 'undefined') return;
+      if (statusTimeoutRef.current !== null) {
+        window.clearTimeout(statusTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const publishedContent = useMemo(() => parseSavedHomeContent(lastSavedSnapshot), [lastSavedSnapshot]);
   const sortedNews = useMemo(
@@ -599,6 +621,7 @@ export const AdminPage = () => {
   };
 
   const selectOrRestoreNewsItem = (item: HomeNewsItem) => {
+    const existsInDraft = draft.news.some((entry) => entry.id === item.id);
     setDraft((current) => {
       if (current.news.some((entry) => entry.id === item.id)) {
         return current;
@@ -609,6 +632,9 @@ export const AdminPage = () => {
       };
     });
     setSelectedNewsId(item.id);
+    if (!existsInDraft) {
+      announceStatus('Noticia restaurada no rascunho. Salve para publicar novamente.');
+    }
   };
 
   const moveNewsToHighlight = (item: HomeNewsItem) => {
@@ -640,6 +666,7 @@ export const AdminPage = () => {
       ],
     }));
     setSelectedNewsId(nextNewsItem.id);
+    announceStatus('Nova noticia criada no rascunho. Preencha os campos e salve para publicar.');
   };
 
   const duplicateAndSelectNewsItem = (item: HomeNewsItem) => {
@@ -655,6 +682,7 @@ export const AdminPage = () => {
       news: [...current.news, duplicate],
     }));
     setSelectedNewsId(duplicate.id);
+    announceStatus('Copia criada no rascunho. Salve para publicar.');
   };
 
   const removeNewsItem = (id: string) => {
@@ -674,6 +702,8 @@ export const AdminPage = () => {
     if (selectedNewsId === id) {
       setSelectedNewsId(null);
     }
+
+    announceStatus('Noticia removida do rascunho. Salve para refletir essa alteracao no site.');
   };
 
   const applyNewsStructure = (item: HomeNewsItem) => {
@@ -686,13 +716,74 @@ export const AdminPage = () => {
     });
   };
 
+  const handleMoveNewsToHighlight = (item: HomeNewsItem) => {
+    const currentPosition = filteredNewsPositionById.get(item.id) ?? publishedNewsPositionById.get(item.id) ?? -1;
+    if (currentPosition === 0 && item.priority > 0) {
+      announceStatus('Essa noticia ja esta como destaque principal no rascunho.');
+      return;
+    }
+
+    moveNewsToHighlight(item);
+    announceStatus('Noticia movida para destaque no rascunho. Clique em "Salvar publicacao" para enviar ao site.');
+  };
+
+  const handleApplyNewsStructure = (item: HomeNewsItem) => {
+    const nextTitle = item.title.trim() || `Atualizacao - ${getThemeLabel(item.theme)}`;
+    const nextSummary = item.summary.trim() || 'Explique o fato principal, o territorio afetado e o impacto em duas linhas.';
+    const nextReaction = item.reaction.trim() || 'Registre a reacao da comunidade, equipe tecnica ou gestao.';
+    const nextLink = item.link.trim() || '/mapas';
+    const nextDate = item.date.trim() || todayDate();
+
+    const changed =
+      nextTitle !== item.title ||
+      nextSummary !== item.summary ||
+      nextReaction !== item.reaction ||
+      nextLink !== item.link ||
+      nextDate !== item.date;
+
+    if (!changed) {
+      announceStatus('A estrutura base ja estava completa para esta noticia.');
+      return;
+    }
+
+    applyNewsStructure(item);
+    announceStatus('Estrutura base aplicada ao rascunho. Salve para publicar.');
+  };
+
+  const handleUseTodayDate = (item: HomeNewsItem) => {
+    const nextDate = todayDate();
+    if (item.date === nextDate) {
+      announceStatus('A data desta noticia ja esta como hoje.');
+      return;
+    }
+    updateNews(item.id, { date: nextDate });
+    announceStatus('Data atualizada para hoje no rascunho.');
+  };
+
+  const handleClearNewsImage = (item: HomeNewsItem) => {
+    if (!item.imageUrl.trim()) {
+      announceStatus('Esta noticia ja esta sem imagem.');
+      return;
+    }
+    updateNews(item.id, { imageUrl: '' });
+    announceStatus('Imagem removida do rascunho. Salve para publicar.');
+  };
+
+  const handleClearNewsLink = (item: HomeNewsItem) => {
+    if (!item.link.trim()) {
+      announceStatus('Esta noticia ja esta sem link.');
+      return;
+    }
+    updateNews(item.id, { link: '' });
+    announceStatus('Link removido do rascunho. Salve para publicar.');
+  };
+
   const discardUnsavedChanges = () => {
     const persisted = loadHomeContent();
     const snapshot = JSON.stringify(persisted);
     setDraft(persisted);
     setLastSavedSnapshot(snapshot);
-    setStatus('Alterações não salvas descartadas.');
-    window.setTimeout(() => setStatus(''), 2500);
+    announceStatus('Alterações não salvas descartadas.');
   };
 
   const saveDraft = async () => {
@@ -705,11 +796,10 @@ export const AdminPage = () => {
     setDraft(result.normalized);
     if (result.remoteSaved) {
       setLastSavedSnapshot(JSON.stringify(result.normalized));
-      setStatus('Conteudo salvo no banco e no cache local.');
+      announceStatus('Publicacao salva no banco e no cache local.');
     } else {
-      setStatus(`Falha ao salvar no banco. ${result.errorMessage ?? 'Conteudo mantido apenas no cache local.'}`);
+      announceStatus(`Falha ao salvar no banco. ${result.errorMessage ?? 'Conteudo mantido apenas no cache local.'}`);
     }
-    window.setTimeout(() => setStatus(''), 2500);
   };
 
   const restoreDefault = async () => {
@@ -717,13 +807,12 @@ export const AdminPage = () => {
     setDraft(result.normalized);
     if (result.remoteSaved) {
       setLastSavedSnapshot(JSON.stringify(result.normalized));
-      setStatus('Conteudo restaurado para o padrao no banco e no cache local.');
+      announceStatus('Conteudo restaurado para o padrao no banco e no cache local.');
     } else {
-      setStatus(
+      announceStatus(
         `Conteudo restaurado apenas no cache local. ${result.errorMessage ?? 'A persistencia remota falhou.'}`,
       );
     }
-    window.setTimeout(() => setStatus(''), 2500);
   };
 
   return (
@@ -739,7 +828,7 @@ export const AdminPage = () => {
             {hasUnsavedChanges ? 'Alterações não salvas' : 'Tudo salvo'}
           </p>
           <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
-            Salvar conteúdo
+            Salvar publicação
           </button>
           <button type="button" onClick={discardUnsavedChanges} disabled={!hasUnsavedChanges}>
             Descartar não salvo
@@ -767,7 +856,7 @@ export const AdminPage = () => {
           <a href="#admin-carrossel">Carrossel</a>
           <a href="#admin-midias">Vídeos e materiais</a>
           <a href="#admin-noticias">Notícias</a>
-          <a href="#admin-seguranca">Segurança</a>
+          <a href="#admin-tecnico">Avançado</a>
         </div>
       </section>
 
@@ -1333,7 +1422,7 @@ export const AdminPage = () => {
                             <button type="button" className="admin-button-soft" onClick={() => selectOrRestoreNewsItem(displayItem)}>
                               Editar
                             </button>
-                            <button type="button" className="admin-button-soft" onClick={() => moveNewsToHighlight(displayItem)}>
+                            <button type="button" className="admin-button-soft" onClick={() => handleMoveNewsToHighlight(displayItem)}>
                               Mover para destaque
                             </button>
                             {draftVersion ? (
@@ -1414,7 +1503,7 @@ export const AdminPage = () => {
                             <button type="button" className="admin-button-soft" onClick={() => setSelectedNewsId(item.id)}>
                               Editar
                             </button>
-                            <button type="button" className="admin-button-soft" onClick={() => moveNewsToHighlight(item)}>
+                            <button type="button" className="admin-button-soft" onClick={() => handleMoveNewsToHighlight(item)}>
                               Mover para destaque
                             </button>
                             <button type="button" className="admin-button-danger" onClick={() => removeNewsItem(item.id)}>
@@ -1451,7 +1540,7 @@ export const AdminPage = () => {
                       <button type="button" className="admin-button-soft" onClick={() => duplicateAndSelectNewsItem(selectedNews)}>
                         Duplicar selecionada
                       </button>
-                      <button type="button" className="admin-button-soft" onClick={() => moveNewsToHighlight(selectedNews)}>
+                      <button type="button" className="admin-button-soft" onClick={() => handleMoveNewsToHighlight(selectedNews)}>
                         Mover para destaque
                       </button>
                       <button type="button" className="admin-button-danger" onClick={() => removeNewsItem(selectedNews.id)}>
@@ -1459,6 +1548,24 @@ export const AdminPage = () => {
                       </button>
                     </div>
                   </div>
+
+                  <div className="admin-news-save-bar">
+                    <div>
+                      <p className="admin-news-side-kicker">Publicacao</p>
+                      <h3>{hasUnsavedChanges ? 'Alteracoes prontas para salvar' : 'Rascunho ja salvo'}</h3>
+                      <p>As acoes rapidas e a edicao so aparecem no site depois de clicar em salvar.</p>
+                    </div>
+                    <div className="admin-news-save-actions">
+                      <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
+                        Salvar publicacao
+                      </button>
+                      <button type="button" className="admin-button-soft" onClick={discardUnsavedChanges} disabled={!hasUnsavedChanges}>
+                        Descartar rascunho
+                      </button>
+                    </div>
+                  </div>
+
+                  {status ? <p className="admin-news-inline-status">{status}</p> : null}
 
                   <section className="admin-news-publication-preview">
                     <div className="admin-news-preview-bar">
@@ -1575,19 +1682,19 @@ export const AdminPage = () => {
                   </section>
 
                   <div className="admin-news-quick-actions">
-                    <button type="button" className="admin-button-soft" onClick={() => moveNewsToHighlight(selectedNews)}>
+                    <button type="button" className="admin-button-soft" onClick={() => handleMoveNewsToHighlight(selectedNews)}>
                       Mover para destaque
                     </button>
-                    <button type="button" className="admin-button-soft" onClick={() => applyNewsStructure(selectedNews)}>
+                    <button type="button" className="admin-button-soft" onClick={() => handleApplyNewsStructure(selectedNews)}>
                       Aplicar estrutura base
                     </button>
-                    <button type="button" className="admin-button-soft" onClick={() => updateNews(selectedNews.id, { date: todayDate() })}>
+                    <button type="button" className="admin-button-soft" onClick={() => handleUseTodayDate(selectedNews)}>
                       Usar data de hoje
                     </button>
-                    <button type="button" className="admin-button-soft" onClick={() => updateNews(selectedNews.id, { imageUrl: '' })}>
+                    <button type="button" className="admin-button-soft" onClick={() => handleClearNewsImage(selectedNews)}>
                       Limpar imagem
                     </button>
-                    <button type="button" className="admin-button-soft" onClick={() => updateNews(selectedNews.id, { link: '' })}>
+                    <button type="button" className="admin-button-soft" onClick={() => handleClearNewsLink(selectedNews)}>
                       Limpar link
                     </button>
                   </div>
@@ -1659,6 +1766,15 @@ export const AdminPage = () => {
                       />
                     </label>
                   </div>
+
+                  <div className="admin-news-save-actions admin-news-save-actions-bottom">
+                    <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
+                      Salvar publicacao
+                    </button>
+                    <button type="button" className="admin-button-soft" onClick={discardUnsavedChanges} disabled={!hasUnsavedChanges}>
+                      Descartar rascunho
+                    </button>
+                  </div>
                 </>
               ) : (
                 <div className="admin-news-empty-shell">
@@ -1689,44 +1805,50 @@ export const AdminPage = () => {
         )}
       </section>
 
-      <section id="admin-seguranca" className="admin-card">
-        <h2>Segurança atual</h2>
-        <p>
-          O painel usa código de acesso em sessão local (90 minutos). Esta barreira reduz acesso acidental, mas a
-          proteção definitiva exige autenticação no backend.
-        </p>
-        {isFallbackCode ? (
-          <p className="admin-security-alert">
-            Alerta: código padrão ativo. Configure `VITE_ADMIN_ACCESS_CODE` no ambiente de build/deploy.
-          </p>
-        ) : null}
-      </section>
+      <section id="admin-tecnico" className="admin-card admin-card-muted">
+        <details className="admin-tech-details">
+          <summary>Informações técnicas do painel</summary>
+          <div className="admin-tech-details-body">
+            <section>
+              <h2>Segurança atual</h2>
+              <p>
+                O painel usa código de acesso em sessão local (90 minutos). Esta barreira reduz acesso acidental, mas a
+                proteção definitiva exige autenticação no backend.
+              </p>
+              {isFallbackCode ? (
+                <p className="admin-security-alert">
+                  Alerta: código padrão ativo. Configure `VITE_ADMIN_ACCESS_CODE` no ambiente de build/deploy.
+                </p>
+              ) : null}
+            </section>
 
-      <section id="admin-mvp" className="admin-card">
-        <h2>Limite do MVP</h2>
-        <p>
-          Este admin salva no cache local e tenta persistir no banco via endpoint `/api/home-content`.
-          Quando o banco estiver indisponivel, o conteudo continua local e o painel mostra aviso de falha no save remoto.
-        </p>
-        <button
-          type="button"
-          onClick={async () => {
-            const result = await saveHomeContent(defaultHomeContent);
-            const persisted = loadHomeContent();
-            setDraft(persisted);
-            if (result.remoteSaved) {
-              setLastSavedSnapshot(JSON.stringify(persisted));
-              setStatus('Conteudo padrao regravado no banco e no armazenamento local.');
-            } else {
-              setStatus(
-                `Padrao regravado apenas no armazenamento local. ${result.errorMessage ?? 'A persistencia remota falhou.'}`,
-              );
-            }
-            window.setTimeout(() => setStatus(''), 2500);
-          }}
-        >
-          Regravar padrão
-        </button>
+            <section>
+              <h2>Limite do MVP</h2>
+              <p>
+                Este admin salva no cache local e tenta persistir no banco via endpoint `/api/home-content`.
+                Quando o banco estiver indisponivel, o conteudo continua local e o painel mostra aviso de falha no save remoto.
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  const result = await saveHomeContent(defaultHomeContent);
+                  const persisted = loadHomeContent();
+                  setDraft(persisted);
+                  if (result.remoteSaved) {
+                    setLastSavedSnapshot(JSON.stringify(persisted));
+                    announceStatus('Conteudo padrao regravado no banco e no armazenamento local.');
+                  } else {
+                    announceStatus(
+                      `Padrao regravado apenas no armazenamento local. ${result.errorMessage ?? 'A persistencia remota falhou.'}`,
+                    );
+                  }
+                }}
+              >
+                Regravar padrão
+              </button>
+            </section>
+          </div>
+        </details>
       </section>
     </div>
   );

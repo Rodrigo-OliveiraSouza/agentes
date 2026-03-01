@@ -322,7 +322,12 @@ const persistLocalHomeContent = (content: HomeContent): HomeContent => {
 
 export const saveHomeContent = async (
   content: HomeContent,
-): Promise<{ normalized: HomeContent; remoteSaved: boolean; remoteUpdatedAt: string | null }> => {
+): Promise<{
+  normalized: HomeContent;
+  remoteSaved: boolean;
+  remoteUpdatedAt: string | null;
+  errorMessage: string | null;
+}> => {
   const normalized = persistLocalHomeContent(content);
 
   try {
@@ -331,6 +336,7 @@ export const saveHomeContent = async (
       normalized,
       remoteSaved: Boolean(result.ok),
       remoteUpdatedAt: result.updatedAt ?? null,
+      errorMessage: null,
     };
   } catch (error) {
     console.warn('Falha ao salvar conteudo da home no banco. Mantendo armazenamento local.', error);
@@ -338,6 +344,7 @@ export const saveHomeContent = async (
       normalized,
       remoteSaved: false,
       remoteUpdatedAt: null,
+      errorMessage: error instanceof Error ? error.message : 'Erro desconhecido ao salvar conteudo da home.',
     };
   }
 };

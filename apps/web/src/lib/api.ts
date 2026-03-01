@@ -7,7 +7,7 @@ import type {
   TerritoryLevel,
 } from './types';
 
-const DEFAULT_PUBLIC_API_BASE = 'https://ibge-map-api.rodrigoliveira0001.workers.dev';
+const DEFAULT_PUBLIC_API_BASE = '';
 const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').trim();
 
 const isLoopbackHost = (host: string): boolean => {
@@ -35,11 +35,7 @@ const resolveApiBase = (): string => {
     return RAW_API_BASE.replace(/\/+$/, '');
   }
 
-  if (import.meta.env.PROD && !isLocalBrowser()) {
-    return DEFAULT_PUBLIC_API_BASE;
-  }
-
-  return '';
+  return DEFAULT_PUBLIC_API_BASE;
 };
 
 const API_BASE = resolveApiBase();
@@ -66,6 +62,21 @@ type SaveHomeContentResponse = {
 type CachedEntry<T> = {
   expiresAt: number;
   payload: T;
+};
+
+const buildHttpErrorMessage = async (response: Response, url: string): Promise<string> => {
+  const payload = await response.json().catch(() => null);
+  const apiMessage =
+    payload && typeof payload === 'object'
+      ? (payload as { error?: { message?: string }; message?: string }).error?.message ??
+        (payload as { message?: string }).message
+      : null;
+
+  if (apiMessage) {
+    return apiMessage;
+  }
+
+  return `Erro na API (${response.status} ${response.statusText}) em ${url}. Verifique a URL da API no deploy.`;
 };
 
 const buildUrl = (path: string, params?: RequestParams): string => {
@@ -129,8 +140,7 @@ const request = async <T>(path: string, params?: RequestParams, options?: Reques
     const response = await fetch(url);
 
     if (!response.ok) {
-      const payload = await response.json().catch(() => ({ error: { message: 'Erro desconhecido' } }));
-      throw new Error(payload?.error?.message ?? 'Erro na API');
+      throw new Error(await buildHttpErrorMessage(response, url));
     }
 
     const payload = (await response.json()) as T;
@@ -160,8 +170,7 @@ const requestMutation = async <T>(path: string, method: 'PUT' | 'POST' | 'PATCH'
   });
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({ error: { message: 'Erro desconhecido' } }));
-    throw new Error(payload?.error?.message ?? 'Erro na API');
+    throw new Error(await buildHttpErrorMessage(response, url));
   }
 
   return (await response.json()) as T;

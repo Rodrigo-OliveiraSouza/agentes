@@ -20,6 +20,91 @@ const ADMIN_FALLBACK_ACCESS_CODE = 'luiza-barros-2026';
 
 const makeId = (prefix: string): string => `${prefix}-${Date.now()}-${Math.round(Math.random() * 10_000)}`;
 const normalizeSearch = (value: string): string => value.trim().toLowerCase();
+const todayDate = (): string => new Date().toISOString().slice(0, 10);
+const truncateText = (value: string, maxLength: number): string => {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return `${trimmed.slice(0, Math.max(0, maxLength - 1)).trimEnd()}...`;
+};
+const parseNewsDateValue = (value: string): number => {
+  const parsed = Date.parse(`${value}T00:00:00`);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+const formatNewsDateLabel = (value: string): string => {
+  if (!value.trim()) return 'Sem data';
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(parsed);
+};
+const getThemeLabel = (theme: HomeThemeKey): string => {
+  return HOME_THEME_OPTIONS.find((option) => option.key === theme)?.label ?? theme;
+};
+
+type AdminNewsTemplate = 'padrao' | 'destaque' | 'reacao';
+
+const getNewsPlacementMeta = (index: number): { label: string; tone: 'primary' | 'secondary' | 'feed' } => {
+  if (index === 0) {
+    return {
+      label: 'Destaque principal',
+      tone: 'primary',
+    };
+  }
+
+  if (index === 1) {
+    return {
+      label: 'Destaque lateral',
+      tone: 'secondary',
+    };
+  }
+
+  return {
+    label: `Grade ${index - 1}`,
+    tone: 'feed',
+  };
+};
+
+const createNewsItem = (theme: HomeThemeKey, template: AdminNewsTemplate): HomeNewsItem => {
+  const base: HomeNewsItem = {
+    id: makeId('news'),
+    theme,
+    title: 'Nova noticia',
+    summary: 'Resumo da noticia',
+    date: todayDate(),
+    imageUrl: '',
+    link: '/mapas',
+    reaction: 'Sem reacao registrada.',
+  };
+
+  if (template === 'destaque') {
+    return {
+      ...base,
+      title: 'Novo destaque',
+      summary: 'Explique o fato principal, o territorio e o impacto em ate duas linhas.',
+      reaction: 'Registre a reacao institucional ou comunitaria ao destaque.',
+    };
+  }
+
+  if (template === 'reacao') {
+    return {
+      ...base,
+      title: 'Nova noticia com reacao',
+      summary: 'Descreva o acontecimento, onde ocorreu e os proximos passos.',
+      reaction: 'Descreva como a comunidade, equipe tecnica ou gestao reagiu.',
+    };
+  }
+
+  return base;
+};
+
+const getNewsPreviewImage = (item: HomeNewsItem, position: number, carousel: HomeCarouselItem[]): string => {
+  if (item.imageUrl.trim()) return item.imageUrl.trim();
+  if (!carousel.length) return '';
+  return carousel[position % carousel.length]?.imageUrl ?? '';
+};
 
 const readFileAsDataUrl = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -125,6 +210,7 @@ export const AdminPage = () => {
   const [includeGeneralTheme, setIncludeGeneralTheme] = useState(false);
   const [mediaFilter, setMediaFilter] = useState<AdminMediaFilter>('video');
   const [quickSearch, setQuickSearch] = useState('');
+  const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isUnlocked) return;
@@ -145,7 +231,14 @@ export const AdminPage = () => {
   }, [isUnlocked]);
 
   const sortedNews = useMemo(
-    () => [...draft.news].sort((a, b) => (a.date < b.date ? 1 : -1)),
+    () =>
+      draft.news
+        .map((item, index) => ({ item, index }))
+        .sort((a, b) => {
+          const byDate = parseNewsDateValue(b.item.date) - parseNewsDateValue(a.item.date);
+          return byDate !== 0 ? byDate : a.index - b.index;
+        })
+        .map(({ item }) => item),
     [draft.news],
   );
   const draftSnapshot = useMemo(() => JSON.stringify(draft), [draft]);
@@ -188,6 +281,45 @@ export const AdminPage = () => {
       videos: draft.mediaItems.filter((item) => item.theme === editorTheme && item.type === 'video').length,
     };
   }, [draft.news, draft.mediaItems, editorTheme]);
+  const selectedNews = useMemo(
+    () => filteredNews.find((item) => item.id === selectedNewsId) ?? filteredNews[0] ?? null,
+    [filteredNews, selectedNewsId],
+  );
+  const selectedNewsPosition = useMemo(
+    () => (selectedNews ? filteredNews.findIndex((item) => item.id === selectedNews.id) : -1),
+    [filteredNews, selectedNews],
+  );
+  const selectedNewsPlacement = useMemo(
+    () => (selectedNewsPosition >= 0 ? getNewsPlacementMeta(selectedNewsPosition) : null),
+    [selectedNewsPosition],
+  );
+  const selectedNewsPreviewImage = useMemo(
+    () => (selectedNews && selectedNewsPosition >= 0 ? getNewsPreviewImage(selectedNews, selectedNewsPosition, draft.carousel) : ''),
+    [draft.carousel, selectedNews, selectedNewsPosition],
+  );
+  const filteredNewsStats = useMemo(
+    () => ({
+      total: filteredNews.length,
+      withImage: filteredNews.filter((item) => item.imageUrl.trim()).length,
+      missingLink: filteredNews.filter((item) => !item.link.trim()).length,
+      missingReaction: filteredNews.filter((item) => !item.reaction.trim() || item.reaction === 'Sem reacao registrada.').length,
+    }),
+    [filteredNews],
+  );
+  const newsScopeLabel = includeGeneralTheme && editorTheme !== 'geral' ? `${editorThemeLabel} + Geral` : editorThemeLabel;
+
+  useEffect(() => {
+    if (!filteredNews.length) {
+      if (selectedNewsId !== null) {
+        setSelectedNewsId(null);
+      }
+      return;
+    }
+
+    if (!selectedNewsId || !filteredNews.some((item) => item.id === selectedNewsId)) {
+      setSelectedNewsId(filteredNews[0].id);
+    }
+  }, [filteredNews, selectedNewsId]);
 
   const unlockAdmin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -413,6 +545,58 @@ export const AdminPage = () => {
     }));
   };
 
+  const addNewsItem = (template: AdminNewsTemplate = 'padrao') => {
+    const nextNewsItem = createNewsItem(editorTheme, template);
+    setDraft((current) => ({
+      ...current,
+      news: [...current.news, nextNewsItem],
+    }));
+    setSelectedNewsId(nextNewsItem.id);
+  };
+
+  const duplicateAndSelectNewsItem = (item: HomeNewsItem) => {
+    const duplicate = {
+      ...item,
+      id: makeId('news'),
+      title: `${item.title || 'Noticia'} (copia)`,
+    };
+
+    setDraft((current) => ({
+      ...current,
+      news: [...current.news, duplicate],
+    }));
+    setSelectedNewsId(duplicate.id);
+  };
+
+  const removeNewsItem = (id: string) => {
+    const item = draft.news.find((entry) => entry.id === id);
+    if (item && typeof window !== 'undefined') {
+      const itemTitle = item.title.trim() || 'esta noticia';
+      if (!window.confirm(`Remover "${itemTitle}"?`)) {
+        return;
+      }
+    }
+
+    setDraft((current) => ({
+      ...current,
+      news: current.news.filter((entry) => entry.id !== id),
+    }));
+
+    if (selectedNewsId === id) {
+      setSelectedNewsId(null);
+    }
+  };
+
+  const applyNewsStructure = (item: HomeNewsItem) => {
+    updateNews(item.id, {
+      title: item.title.trim() || `Atualizacao - ${getThemeLabel(item.theme)}`,
+      summary: item.summary.trim() || 'Explique o fato principal, o territorio afetado e o impacto em duas linhas.',
+      reaction: item.reaction.trim() || 'Registre a reacao da comunidade, equipe tecnica ou gestao.',
+      link: item.link.trim() || '/mapas',
+      date: item.date.trim() || todayDate(),
+    });
+  };
+
   const discardUnsavedChanges = () => {
     const persisted = loadHomeContent();
     const snapshot = JSON.stringify(persisted);
@@ -434,7 +618,7 @@ export const AdminPage = () => {
       setLastSavedSnapshot(JSON.stringify(result.normalized));
       setStatus('Conteudo salvo no banco e no cache local.');
     } else {
-      setStatus('Falha ao salvar no banco. Conteudo mantido apenas no cache local.');
+      setStatus(`Falha ao salvar no banco. ${result.errorMessage ?? 'Conteudo mantido apenas no cache local.'}`);
     }
     window.setTimeout(() => setStatus(''), 2500);
   };
@@ -446,7 +630,9 @@ export const AdminPage = () => {
       setLastSavedSnapshot(JSON.stringify(result.normalized));
       setStatus('Conteudo restaurado para o padrao no banco e no cache local.');
     } else {
-      setStatus('Conteudo restaurado apenas no cache local (falha no banco).');
+      setStatus(
+        `Conteudo restaurado apenas no cache local. ${result.errorMessage ?? 'A persistencia remota falhou.'}`,
+      );
     }
     window.setTimeout(() => setStatus(''), 2500);
   };
@@ -938,6 +1124,270 @@ export const AdminPage = () => {
 
       <section id="admin-noticias" className="admin-card">
         <div className="admin-section-head">
+          <div>
+            <h2>Noticias e reacoes - {editorThemeLabel}</h2>
+            <p className="admin-news-caption">Editor rapido com lista, preview e acoes de construcao.</p>
+          </div>
+          <div className="admin-section-actions">
+            <button type="button" onClick={() => addNewsItem('padrao')}>
+              Nova noticia
+            </button>
+            <button type="button" className="admin-button-soft" onClick={() => addNewsItem('destaque')}>
+              Modelo destaque
+            </button>
+            <button type="button" className="admin-button-soft" onClick={() => addNewsItem('reacao')}>
+              Modelo reacao
+            </button>
+          </div>
+        </div>
+        <p className="admin-helper-text">
+          Noticias listadas conforme a aba em edicao. Escolha um item na lista lateral para editar, duplicar, remover
+          ou montar a estrutura base sem abrir varios blocos.
+        </p>
+        <div className="admin-news-stat-row">
+          <p className="admin-news-stat-chip">
+            <strong>{filteredNewsStats.total}</strong> noticias visiveis em <span>{newsScopeLabel}</span>
+          </p>
+          <p className="admin-news-stat-chip">
+            <strong>{filteredNewsStats.withImage}</strong> com imagem
+          </p>
+          <p className="admin-news-stat-chip">
+            <strong>{filteredNewsStats.missingLink}</strong> sem link
+          </p>
+          <p className="admin-news-stat-chip">
+            <strong>{filteredNewsStats.missingReaction}</strong> sem reacao pronta
+          </p>
+        </div>
+
+        {filteredNews.length ? (
+          <div className="admin-news-workbench">
+            <aside className="admin-news-sidebar">
+              <div className="admin-news-sidebar-head">
+                <div>
+                  <p className="admin-news-side-kicker">Lista filtrada</p>
+                  <h3>{newsScopeLabel}</h3>
+                </div>
+                <button
+                  type="button"
+                  className="admin-button-soft"
+                  onClick={() => setSelectedNewsId(filteredNews[0]?.id ?? null)}
+                >
+                  Ir para primeira
+                </button>
+              </div>
+
+              <div className="admin-news-list">
+                {filteredNews.map((item, index) => {
+                  const themeLabel = getThemeLabel(item.theme);
+                  const placement = getNewsPlacementMeta(index);
+                  const cardImage = getNewsPreviewImage(item, index, draft.carousel);
+                  const isSelected = selectedNews?.id === item.id;
+                  const previewText =
+                    truncateText(item.summary || item.reaction || 'Sem resumo cadastrado.', 120) || 'Sem resumo cadastrado.';
+
+                  return (
+                    <article className={`admin-news-card${isSelected ? ' is-selected' : ''}`} key={item.id}>
+                      <button
+                        type="button"
+                        className="admin-news-card-main"
+                        onClick={() => setSelectedNewsId(item.id)}
+                        aria-pressed={isSelected}
+                      >
+                        <div className="admin-news-card-thumb">
+                          {cardImage ? (
+                            <img src={cardImage} alt={item.title || 'Noticia'} />
+                          ) : (
+                            <div className="admin-news-card-placeholder">Sem imagem</div>
+                          )}
+                        </div>
+                        <div className="admin-news-card-body">
+                          <div className="admin-news-card-meta">
+                            <span className={`admin-news-slot admin-news-slot-${placement.tone}`}>{placement.label}</span>
+                            <span className="admin-news-theme-pill">{themeLabel}</span>
+                          </div>
+                          <h3>{item.title || 'Noticia sem titulo'}</h3>
+                          <p className="admin-news-card-date">{formatNewsDateLabel(item.date)}</p>
+                          <p className="admin-news-card-summary">{previewText}</p>
+                        </div>
+                      </button>
+
+                      <div className="admin-news-card-actions">
+                        <button type="button" className="admin-button-soft" onClick={() => duplicateAndSelectNewsItem(item)}>
+                          Duplicar
+                        </button>
+                        <button type="button" className="admin-button-danger" onClick={() => removeNewsItem(item.id)}>
+                          Remover
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </aside>
+
+            <div className="admin-news-editor">
+              {selectedNews ? (
+                <>
+                  <div className="admin-news-editor-head">
+                    <div>
+                      <p className="admin-news-side-kicker">{selectedNewsPlacement?.label ?? 'Edicao'}</p>
+                      <h3>{selectedNews.title || 'Noticia sem titulo'}</h3>
+                      <p>
+                        Item {selectedNewsPosition + 1} de {filteredNews.length} em {newsScopeLabel}.
+                      </p>
+                    </div>
+                    <div className="admin-section-actions">
+                      <button type="button" className="admin-button-soft" onClick={() => duplicateAndSelectNewsItem(selectedNews)}>
+                        Duplicar selecionada
+                      </button>
+                      <button type="button" className="admin-button-danger" onClick={() => removeNewsItem(selectedNews.id)}>
+                        Remover selecionada
+                      </button>
+                    </div>
+                  </div>
+
+                  <article className="admin-news-preview">
+                    <div className="admin-news-preview-media">
+                      {selectedNewsPreviewImage ? (
+                        <img src={selectedNewsPreviewImage} alt={selectedNews.title || 'Noticia'} />
+                      ) : (
+                        <div className="admin-news-preview-empty">Sem imagem definida</div>
+                      )}
+                    </div>
+                    <div className="admin-news-preview-body">
+                      <div className="admin-news-card-meta">
+                        {selectedNewsPlacement ? (
+                          <span className={`admin-news-slot admin-news-slot-${selectedNewsPlacement.tone}`}>
+                            {selectedNewsPlacement.label}
+                          </span>
+                        ) : null}
+                        <span className="admin-news-theme-pill">{getThemeLabel(selectedNews.theme)}</span>
+                        <span className="admin-news-theme-pill">{formatNewsDateLabel(selectedNews.date)}</span>
+                      </div>
+                      <h3>{selectedNews.title || 'Noticia sem titulo'}</h3>
+                      <p>
+                        {selectedNews.summary.trim() || 'Resumo vazio. Esta area mostra como a noticia deve aparecer no portal.'}
+                      </p>
+                      <blockquote>{selectedNews.reaction.trim() || 'Reacao ainda nao preenchida.'}</blockquote>
+                      <div className="admin-news-preview-footer">
+                        <span>{selectedNews.link.trim() || 'Sem link definido'}</span>
+                        {selectedNews.link.trim() ? (
+                          <a className="admin-external-link" href={selectedNews.link} target="_blank" rel="noreferrer">
+                            Abrir link
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  </article>
+
+                  <div className="admin-news-quick-actions">
+                    <button type="button" className="admin-button-soft" onClick={() => applyNewsStructure(selectedNews)}>
+                      Aplicar estrutura base
+                    </button>
+                    <button type="button" className="admin-button-soft" onClick={() => updateNews(selectedNews.id, { date: todayDate() })}>
+                      Usar data de hoje
+                    </button>
+                    <button type="button" className="admin-button-soft" onClick={() => updateNews(selectedNews.id, { imageUrl: '' })}>
+                      Limpar imagem
+                    </button>
+                    <button type="button" className="admin-button-soft" onClick={() => updateNews(selectedNews.id, { link: '' })}>
+                      Limpar link
+                    </button>
+                  </div>
+
+                  <div className="admin-grid admin-news-editor-grid">
+                    <label>
+                      Titulo
+                      <input value={selectedNews.title} onChange={(event) => updateNews(selectedNews.id, { title: event.target.value })} />
+                    </label>
+                    <label>
+                      Data
+                      <input
+                        type="date"
+                        value={selectedNews.date}
+                        onChange={(event) => updateNews(selectedNews.id, { date: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Tema da noticia
+                      <select
+                        value={selectedNews.theme}
+                        onChange={(event) => updateNews(selectedNews.id, { theme: event.target.value as HomeThemeKey })}
+                      >
+                        {HOME_THEME_OPTIONS.map((option) => (
+                          <option key={option.key} value={option.key}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Link
+                      <input value={selectedNews.link} onChange={(event) => updateNews(selectedNews.id, { link: event.target.value })} />
+                    </label>
+                    <label className="admin-span-2">
+                      Resumo
+                      <textarea
+                        value={selectedNews.summary}
+                        onChange={(event) => updateNews(selectedNews.id, { summary: event.target.value })}
+                      />
+                    </label>
+                    <label className="admin-span-2">
+                      Reacao
+                      <textarea
+                        value={selectedNews.reaction}
+                        onChange={(event) => updateNews(selectedNews.id, { reaction: event.target.value })}
+                      />
+                    </label>
+                    <label className="admin-span-2">
+                      URL da imagem
+                      <input
+                        value={selectedNews.imageUrl}
+                        onChange={(event) => updateNews(selectedNews.id, { imageUrl: event.target.value })}
+                        placeholder="https://..."
+                      />
+                    </label>
+                    <label className="admin-span-2">
+                      Upload local (base64)
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          const imageUrl = await readFileAsDataUrl(file);
+                          updateNews(selectedNews.id, { imageUrl });
+                          event.currentTarget.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <div className="admin-news-empty-shell">
+            <p className="admin-empty-state">
+              Nenhuma noticia encontrada para esta aba. Crie uma noticia nova ou use um modelo rapido para iniciar.
+            </p>
+            <div className="admin-section-actions">
+              <button type="button" onClick={() => addNewsItem('padrao')}>
+                Nova noticia
+              </button>
+              <button type="button" className="admin-button-soft" onClick={() => addNewsItem('destaque')}>
+                Modelo destaque
+              </button>
+              <button type="button" className="admin-button-soft" onClick={() => addNewsItem('reacao')}>
+                Modelo reacao
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section id="admin-noticias-avancado" className="admin-card">
+        <div className="admin-section-head">
           <h2>Notícias e reações - {editorThemeLabel}</h2>
           <button type="button" onClick={addNewsForEditorTheme}>
             Adicionar notícia desta aba
@@ -1084,7 +1534,9 @@ export const AdminPage = () => {
               setLastSavedSnapshot(JSON.stringify(persisted));
               setStatus('Conteudo padrao regravado no banco e no armazenamento local.');
             } else {
-              setStatus('Padrao regravado apenas no armazenamento local (falha no banco).');
+              setStatus(
+                `Padrao regravado apenas no armazenamento local. ${result.errorMessage ?? 'A persistencia remota falhou.'}`,
+              );
             }
             window.setTimeout(() => setStatus(''), 2500);
           }}
@@ -1095,8 +1547,3 @@ export const AdminPage = () => {
     </div>
   );
 };
-
-
-
-
-

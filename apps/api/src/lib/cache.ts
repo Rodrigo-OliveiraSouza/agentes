@@ -1,4 +1,4 @@
-import { getSql } from './db';
+import { getSql, getSqlRows } from './db';
 import type { AppBindings } from './types';
 
 type CacheContext = {
@@ -58,16 +58,16 @@ const readFromPostgres = async (env: AppBindings, key: string): Promise<CachedPa
     const sql = getSql(env);
     if (!sql) return null;
 
-    const rows = await sql`
+    const rows = getSqlRows<{ payload: unknown; expires_at: string }>(await sql`
       SELECT payload, expires_at
       FROM cache_requests
       WHERE key = ${key}
       LIMIT 1
-    `;
+    `);
 
     if (!rows.length) return null;
 
-    const row = rows[0] as { payload: unknown; expires_at: string };
+    const row = rows[0];
     const expiresAt = new Date(row.expires_at).getTime();
     if (Number.isFinite(expiresAt) && expiresAt <= Date.now()) {
       return null;
@@ -193,4 +193,3 @@ export const cachedJson = async <T extends CachedPayload>(
   c.executionCtx.waitUntil(writeToPostgres(c.env, key, params, payload, effectiveTtl));
   return jsonResponse(payload, 'MISS');
 };
-

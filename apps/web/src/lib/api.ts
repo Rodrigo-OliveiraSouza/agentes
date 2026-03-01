@@ -7,7 +7,7 @@ import type {
   TerritoryLevel,
 } from './types';
 
-const DEFAULT_PUBLIC_API_BASE = '';
+const DEFAULT_PUBLIC_API_BASE = import.meta.env.DEV ? '' : 'https://ibge-map-api.rodrigoliveira0001.workers.dev';
 const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').trim();
 
 const isLoopbackHost = (host: string): boolean => {

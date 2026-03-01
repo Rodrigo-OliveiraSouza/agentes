@@ -306,6 +306,8 @@ export const AdminPage = () => {
   );
   const draftSnapshot = useMemo(() => JSON.stringify(draft), [draft]);
   const hasUnsavedChanges = draftSnapshot !== lastSavedSnapshot;
+  const publishButtonLabel = 'Salvar e publicar';
+  const publishStateLabel = hasUnsavedChanges ? 'Alteracoes prontas para publicar' : 'Tudo publicado';
   const normalizedQuickSearch = useMemo(() => normalizeSearch(quickSearch), [quickSearch]);
   const editorThemeLabel = useMemo(
     () => HOME_THEME_OPTIONS.find((option) => option.key === editorTheme)?.label ?? editorTheme,
@@ -826,7 +828,7 @@ export const AdminPage = () => {
             {hasUnsavedChanges ? 'Alterações não salvas' : 'Tudo salvo'}
           </p>
           <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
-            Salvar publicação
+            {publishButtonLabel}
           </button>
           <button type="button" onClick={discardUnsavedChanges} disabled={!hasUnsavedChanges}>
             Descartar não salvo
@@ -1109,6 +1111,21 @@ export const AdminPage = () => {
           Lista filtrada pela aba em edição. Você pode alternar entre vídeo, foto, folder e texto para editar o que
           aparece em cada aba da página inicial.
         </p>
+        <div className="admin-publish-bar">
+          <div>
+            <p className="admin-news-side-kicker">Publicacao desta secao</p>
+            <h3>{publishStateLabel}</h3>
+            <p>Videos, fotos, folders e textos so entram no site depois de clicar em salvar.</p>
+          </div>
+          <div className="admin-news-save-actions">
+            <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
+              {publishButtonLabel}
+            </button>
+            <button type="button" className="admin-button-soft" onClick={discardUnsavedChanges} disabled={!hasUnsavedChanges}>
+              Descartar rascunho
+            </button>
+          </div>
+        </div>
         <div className="admin-toolbar-row">
           <label htmlFor="admin-media-filter">Tipo listado</label>
           <select
@@ -1295,6 +1312,21 @@ export const AdminPage = () => {
             Nenhum item encontrado para os filtros atuais. Altere a aba/tipo ou adicione novo conteúdo.
           </p>
         )}
+        <div className="admin-publish-bar admin-publish-bar-bottom">
+          <div>
+            <p className="admin-news-side-kicker">Fechar e publicar</p>
+            <h3>{publishStateLabel}</h3>
+            <p>Se terminou esta secao, publique agora para mandar as alteracoes ao banco.</p>
+          </div>
+          <div className="admin-news-save-actions">
+            <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
+              {publishButtonLabel}
+            </button>
+            <button type="button" className="admin-button-soft" onClick={discardUnsavedChanges} disabled={!hasUnsavedChanges}>
+              Descartar rascunho
+            </button>
+          </div>
+        </div>
       </section>
 
       <section id="admin-noticias" className="admin-card">
@@ -1549,12 +1581,12 @@ export const AdminPage = () => {
                   <div className="admin-news-save-bar">
                     <div>
                       <p className="admin-news-side-kicker">Publicacao</p>
-                      <h3>{hasUnsavedChanges ? 'Alteracoes prontas para salvar' : 'Rascunho ja salvo'}</h3>
+                      <h3>{hasUnsavedChanges ? 'Alteracoes prontas para publicar' : 'Rascunho ja publicado'}</h3>
                       <p>As acoes rapidas e a edicao so aparecem no site depois de clicar em salvar.</p>
                     </div>
                     <div className="admin-news-save-actions">
                       <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
-                        Salvar publicacao
+                        {publishButtonLabel}
                       </button>
                       <button type="button" className="admin-button-soft" onClick={discardUnsavedChanges} disabled={!hasUnsavedChanges}>
                         Descartar rascunho
@@ -1766,7 +1798,7 @@ export const AdminPage = () => {
 
                   <div className="admin-news-save-actions admin-news-save-actions-bottom">
                     <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
-                      Salvar publicacao
+                      {publishButtonLabel}
                     </button>
                     <button type="button" className="admin-button-soft" onClick={discardUnsavedChanges} disabled={!hasUnsavedChanges}>
                       Descartar rascunho

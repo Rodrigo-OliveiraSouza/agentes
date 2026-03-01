@@ -61,7 +61,6 @@ export type HomeContent = {
   updatedAt: string;
 };
 
-const STORAGE_KEY = 'luiza-barros-home-content-v1';
 const STORAGE_EVENT = 'luiza-barros-home-content-updated';
 
 const normalizeNewsPriority = (value: unknown): number => {
@@ -333,27 +332,22 @@ const sanitizeContent = (value: unknown): HomeContent => {
 };
 
 export const loadHomeContent = (): HomeContent => {
-  if (typeof window === 'undefined') {
-    return cloneContent(defaultHomeContent);
-  }
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return cloneContent(defaultHomeContent);
-    return sanitizeContent(JSON.parse(raw));
-  } catch {
-    return cloneContent(defaultHomeContent);
-  }
+  return cloneContent(defaultHomeContent);
 };
 
-const persistLocalHomeContent = (content: HomeContent): HomeContent => {
-  const normalized = sanitizeContent(content);
-  if (typeof window === 'undefined') {
-    return normalized;
-  }
+const dispatchHomeContentUpdate = (content: HomeContent): void => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(STORAGE_EVENT, {
+      detail: {
+        content: cloneContent(content),
+      },
+    }),
+  );
+};
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-  window.dispatchEvent(new CustomEvent(STORAGE_EVENT));
+const prepareHomeContent = (content: HomeContent): HomeContent => {
+  const normalized = sanitizeContent(content);
   return normalized;
 };
 
@@ -365,10 +359,11 @@ export const saveHomeContent = async (
   remoteUpdatedAt: string | null;
   errorMessage: string | null;
 }> => {
-  const normalized = persistLocalHomeContent(content);
+  const normalized = prepareHomeContent(content);
 
   try {
     const result = await api.saveHomeContent(normalized);
+    dispatchHomeContentUpdate(normalized);
     return {
       normalized,
       remoteSaved: Boolean(result.ok),
@@ -376,7 +371,7 @@ export const saveHomeContent = async (
       errorMessage: null,
     };
   } catch (error) {
-    console.warn('Falha ao salvar conteudo da home no banco. Mantendo armazenamento local.', error);
+    console.warn('Falha ao salvar conteudo da home no banco.', error);
     return {
       normalized,
       remoteSaved: false,
@@ -390,18 +385,15 @@ export const syncHomeContentFromApi = async (): Promise<HomeContent | null> => {
   try {
     const payload = await api.homeContent();
     if (!payload.item) return null;
-    const normalized = sanitizeContent(payload.item);
-    return persistLocalHomeContent(normalized);
+    return sanitizeContent(payload.item);
   } catch (error) {
-    console.warn('Falha ao sincronizar conteudo da home com a API. Usando conteudo local.', error);
+    console.warn('Falha ao sincronizar conteudo da home com a API.', error);
     return null;
   }
 };
 
 export const resetHomeContent = (): void => {
-  if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(STORAGE_KEY);
-  window.dispatchEvent(new CustomEvent(STORAGE_EVENT));
+  dispatchHomeContentUpdate(defaultHomeContent);
 };
 
 export const homeContentUpdateEvent = STORAGE_EVENT;

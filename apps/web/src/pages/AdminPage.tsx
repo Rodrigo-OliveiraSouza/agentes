@@ -779,7 +779,7 @@ export const AdminPage = () => {
   };
 
   const discardUnsavedChanges = () => {
-    const persisted = loadHomeContent();
+    const persisted = parseSavedHomeContent(lastSavedSnapshot);
     const snapshot = JSON.stringify(persisted);
     setDraft(persisted);
     setLastSavedSnapshot(snapshot);
@@ -796,9 +796,9 @@ export const AdminPage = () => {
     setDraft(result.normalized);
     if (result.remoteSaved) {
       setLastSavedSnapshot(JSON.stringify(result.normalized));
-      announceStatus('Publicacao salva no banco e no cache local.');
+      announceStatus('Publicacao salva no banco de dados.');
     } else {
-      announceStatus(`Falha ao salvar no banco. ${result.errorMessage ?? 'Conteudo mantido apenas no cache local.'}`);
+      announceStatus(`Falha ao salvar no banco. ${result.errorMessage ?? 'A publicacao nao foi gravada.'}`);
     }
   };
 
@@ -807,11 +807,9 @@ export const AdminPage = () => {
     setDraft(result.normalized);
     if (result.remoteSaved) {
       setLastSavedSnapshot(JSON.stringify(result.normalized));
-      announceStatus('Conteudo restaurado para o padrao no banco e no cache local.');
+      announceStatus('Conteudo restaurado para o padrao no banco de dados.');
     } else {
-      announceStatus(
-        `Conteudo restaurado apenas no cache local. ${result.errorMessage ?? 'A persistencia remota falhou.'}`,
-      );
+      announceStatus(`Falha ao restaurar o padrao no banco. ${result.errorMessage ?? 'A persistencia remota falhou.'}`);
     }
   };
 
@@ -856,7 +854,6 @@ export const AdminPage = () => {
           <a href="#admin-carrossel">Carrossel</a>
           <a href="#admin-midias">Vídeos e materiais</a>
           <a href="#admin-noticias">Notícias</a>
-          <a href="#admin-tecnico">Avançado</a>
         </div>
       </section>
 
@@ -1805,51 +1802,6 @@ export const AdminPage = () => {
         )}
       </section>
 
-      <section id="admin-tecnico" className="admin-card admin-card-muted">
-        <details className="admin-tech-details">
-          <summary>Informações técnicas do painel</summary>
-          <div className="admin-tech-details-body">
-            <section>
-              <h2>Segurança atual</h2>
-              <p>
-                O painel usa código de acesso em sessão local (90 minutos). Esta barreira reduz acesso acidental, mas a
-                proteção definitiva exige autenticação no backend.
-              </p>
-              {isFallbackCode ? (
-                <p className="admin-security-alert">
-                  Alerta: código padrão ativo. Configure `VITE_ADMIN_ACCESS_CODE` no ambiente de build/deploy.
-                </p>
-              ) : null}
-            </section>
-
-            <section>
-              <h2>Limite do MVP</h2>
-              <p>
-                Este admin salva no cache local e tenta persistir no banco via endpoint `/api/home-content`.
-                Quando o banco estiver indisponivel, o conteudo continua local e o painel mostra aviso de falha no save remoto.
-              </p>
-              <button
-                type="button"
-                onClick={async () => {
-                  const result = await saveHomeContent(defaultHomeContent);
-                  const persisted = loadHomeContent();
-                  setDraft(persisted);
-                  if (result.remoteSaved) {
-                    setLastSavedSnapshot(JSON.stringify(persisted));
-                    announceStatus('Conteudo padrao regravado no banco e no armazenamento local.');
-                  } else {
-                    announceStatus(
-                      `Padrao regravado apenas no armazenamento local. ${result.errorMessage ?? 'A persistencia remota falhou.'}`,
-                    );
-                  }
-                }}
-              >
-                Regravar padrão
-              </button>
-            </section>
-          </div>
-        </details>
-      </section>
     </div>
   );
 };

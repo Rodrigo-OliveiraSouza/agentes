@@ -116,8 +116,11 @@ export const LandingPage = () => {
 
   useEffect(() => {
     let alive = true;
-    const refresh = () => {
-      setContent(loadHomeContent());
+    const refresh = (event: Event) => {
+      const detail = (event as CustomEvent<{ content?: HomeContent }>).detail;
+      if (detail?.content) {
+        setContent(detail.content);
+      }
     };
 
     const hydrateFromApi = async () => {
@@ -127,11 +130,9 @@ export const LandingPage = () => {
     };
 
     hydrateFromApi();
-    window.addEventListener('storage', refresh);
     window.addEventListener(homeContentUpdateEvent, refresh as EventListener);
     return () => {
       alive = false;
-      window.removeEventListener('storage', refresh);
       window.removeEventListener(homeContentUpdateEvent, refresh as EventListener);
     };
   }, []);
@@ -794,6 +795,5 @@ export const LandingPage = () => {
     </div>
   );
 };
-
 
 

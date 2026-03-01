@@ -39,7 +39,7 @@ const formatNewsDateLabel = (value: string): string => {
   }).format(parsed);
 };
 const formatPortalNewsDateLabel = (value: string): string => {
-  if (!value.trim()) return 'Data nao informada';
+  if (!value.trim()) return 'Data não informada';
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString('pt-BR');
@@ -75,12 +75,12 @@ const createNewsItem = (theme: HomeThemeKey, template: AdminNewsTemplate): HomeN
   const base: HomeNewsItem = {
     id: makeId('news'),
     theme,
-    title: 'Nova noticia',
-    summary: 'Resumo da noticia',
+    title: 'Nova notícia',
+    summary: 'Resumo da notícia',
     date: todayDate(),
     imageUrl: '',
     link: '/mapas',
-    reaction: 'Sem reacao registrada.',
+    reaction: 'Sem reação registrada.',
     priority: 0,
   };
 
@@ -88,17 +88,17 @@ const createNewsItem = (theme: HomeThemeKey, template: AdminNewsTemplate): HomeN
     return {
       ...base,
       title: 'Novo destaque',
-      summary: 'Explique o fato principal, o territorio e o impacto em ate duas linhas.',
-      reaction: 'Registre a reacao institucional ou comunitaria ao destaque.',
+      summary: 'Explique o fato principal, o território e o impacto em até duas linhas.',
+      reaction: 'Registre a reação institucional ou comunitária ao destaque.',
     };
   }
 
   if (template === 'reacao') {
     return {
       ...base,
-      title: 'Nova noticia com reacao',
-      summary: 'Descreva o acontecimento, onde ocorreu e os proximos passos.',
-      reaction: 'Descreva como a comunidade, equipe tecnica ou gestao reagiu.',
+      title: 'Nova notícia com reação',
+      summary: 'Descreva o acontecimento, onde ocorreu e os próximos passos.',
+      reaction: 'Descreva como a comunidade, equipe técnica ou gestão reagiu.',
     };
   }
 
@@ -307,7 +307,10 @@ export const AdminPage = () => {
   const draftSnapshot = useMemo(() => JSON.stringify(draft), [draft]);
   const hasUnsavedChanges = draftSnapshot !== lastSavedSnapshot;
   const publishButtonLabel = 'Salvar e publicar';
-  const publishStateLabel = hasUnsavedChanges ? 'Alteracoes prontas para publicar' : 'Tudo publicado';
+  const publishStateLabel = hasUnsavedChanges ? 'Alterações prontas para publicar' : 'Tudo publicado';
+  const publishStateDescription = hasUnsavedChanges
+    ? 'Salve para enviar as alterações do painel ao banco de dados.'
+    : 'O painel já está sincronizado com o banco de dados.';
   const normalizedQuickSearch = useMemo(() => normalizeSearch(quickSearch), [quickSearch]);
   const editorThemeLabel = useMemo(
     () => HOME_THEME_OPTIONS.find((option) => option.key === editorTheme)?.label ?? editorTheme,
@@ -400,7 +403,7 @@ export const AdminPage = () => {
       total: filteredNews.length,
       withImage: filteredNews.filter((item) => item.imageUrl.trim()).length,
       missingLink: filteredNews.filter((item) => !item.link.trim()).length,
-      missingReaction: filteredNews.filter((item) => !item.reaction.trim() || item.reaction === 'Sem reacao registrada.').length,
+      missingReaction: filteredNews.filter((item) => !item.reaction.trim() || item.reaction === 'Sem reação registrada.').length,
     }),
     [filteredNews],
   );
@@ -587,6 +590,7 @@ export const AdminPage = () => {
         },
       ],
     }));
+    announceStatus('Novo vídeo criado no rascunho. Clique em "Salvar e publicar" para enviar ao site.');
   };
 
   const addMaterialForEditorTheme = () => {
@@ -606,6 +610,7 @@ export const AdminPage = () => {
         },
       ],
     }));
+    announceStatus('Novo material criado no rascunho. Clique em "Salvar e publicar" para enviar ao site.');
   };
 
   const duplicateMediaItem = (item: HomeMediaItem) => {
@@ -620,6 +625,7 @@ export const AdminPage = () => {
         },
       ],
     }));
+    announceStatus('Cópia do material criada no rascunho. Clique em "Salvar e publicar" para enviar ao site.');
   };
 
   const selectOrRestoreNewsItem = (item: HomeNewsItem) => {
@@ -635,7 +641,7 @@ export const AdminPage = () => {
     });
     setSelectedNewsId(item.id);
     if (!existsInDraft) {
-      announceStatus('Noticia restaurada no rascunho. Salve para publicar novamente.');
+      announceStatus('Notícia restaurada no rascunho. Salve para publicar novamente.');
     }
   };
 
@@ -668,14 +674,14 @@ export const AdminPage = () => {
       ],
     }));
     setSelectedNewsId(nextNewsItem.id);
-    announceStatus('Nova noticia criada no rascunho. Preencha os campos e salve para publicar.');
+    announceStatus('Nova notícia criada no rascunho. Preencha os campos e salve para publicar.');
   };
 
   const duplicateAndSelectNewsItem = (item: HomeNewsItem) => {
     const duplicate = {
       ...item,
       id: makeId('news'),
-      title: `${item.title || 'Noticia'} (copia)`,
+      title: `${item.title || 'Notícia'} (cópia)`,
       priority: 0,
     };
 
@@ -684,13 +690,13 @@ export const AdminPage = () => {
       news: [...current.news, duplicate],
     }));
     setSelectedNewsId(duplicate.id);
-    announceStatus('Copia criada no rascunho. Salve para publicar.');
+    announceStatus('Cópia criada no rascunho. Salve para publicar.');
   };
 
   const removeNewsItem = (id: string) => {
     const item = draft.news.find((entry) => entry.id === id);
     if (item && typeof window !== 'undefined') {
-      const itemTitle = item.title.trim() || 'esta noticia';
+      const itemTitle = item.title.trim() || 'esta notícia';
       if (!window.confirm(`Remover "${itemTitle}"?`)) {
         return;
       }
@@ -705,14 +711,14 @@ export const AdminPage = () => {
       setSelectedNewsId(null);
     }
 
-    announceStatus('Noticia removida do rascunho. Salve para refletir essa alteracao no site.');
+    announceStatus('Notícia removida do rascunho. Salve para refletir essa alteração no site.');
   };
 
   const applyNewsStructure = (item: HomeNewsItem) => {
     updateNews(item.id, {
-      title: item.title.trim() || `Atualizacao - ${getThemeLabel(item.theme)}`,
-      summary: item.summary.trim() || 'Explique o fato principal, o territorio afetado e o impacto em duas linhas.',
-      reaction: item.reaction.trim() || 'Registre a reacao da comunidade, equipe tecnica ou gestao.',
+      title: item.title.trim() || `Atualização - ${getThemeLabel(item.theme)}`,
+      summary: item.summary.trim() || 'Explique o fato principal, o território afetado e o impacto em duas linhas.',
+      reaction: item.reaction.trim() || 'Registre a reação da comunidade, equipe técnica ou gestão.',
       link: item.link.trim() || '/mapas',
       date: item.date.trim() || todayDate(),
     });
@@ -721,18 +727,18 @@ export const AdminPage = () => {
   const handleMoveNewsToHighlight = (item: HomeNewsItem) => {
     const currentPosition = filteredNewsPositionById.get(item.id) ?? publishedNewsPositionById.get(item.id) ?? -1;
     if (currentPosition === 0 && item.priority > 0) {
-      announceStatus('Essa noticia ja esta como destaque principal no rascunho.');
+      announceStatus('Essa notícia já está como destaque principal no rascunho.');
       return;
     }
 
     moveNewsToHighlight(item);
-    announceStatus('Noticia movida para destaque no rascunho. Clique em "Salvar publicacao" para enviar ao site.');
+    announceStatus('Notícia movida para destaque no rascunho. Clique em "Salvar e publicar" para enviar ao site.');
   };
 
   const handleApplyNewsStructure = (item: HomeNewsItem) => {
-    const nextTitle = item.title.trim() || `Atualizacao - ${getThemeLabel(item.theme)}`;
-    const nextSummary = item.summary.trim() || 'Explique o fato principal, o territorio afetado e o impacto em duas linhas.';
-    const nextReaction = item.reaction.trim() || 'Registre a reacao da comunidade, equipe tecnica ou gestao.';
+    const nextTitle = item.title.trim() || `Atualização - ${getThemeLabel(item.theme)}`;
+    const nextSummary = item.summary.trim() || 'Explique o fato principal, o território afetado e o impacto em duas linhas.';
+    const nextReaction = item.reaction.trim() || 'Registre a reação da comunidade, equipe técnica ou gestão.';
     const nextLink = item.link.trim() || '/mapas';
     const nextDate = item.date.trim() || todayDate();
 
@@ -744,7 +750,7 @@ export const AdminPage = () => {
       nextDate !== item.date;
 
     if (!changed) {
-      announceStatus('A estrutura base ja estava completa para esta noticia.');
+      announceStatus('A estrutura base já estava completa para esta notícia.');
       return;
     }
 
@@ -755,7 +761,7 @@ export const AdminPage = () => {
   const handleUseTodayDate = (item: HomeNewsItem) => {
     const nextDate = todayDate();
     if (item.date === nextDate) {
-      announceStatus('A data desta noticia ja esta como hoje.');
+      announceStatus('A data desta notícia já está como hoje.');
       return;
     }
     updateNews(item.id, { date: nextDate });
@@ -764,7 +770,7 @@ export const AdminPage = () => {
 
   const handleClearNewsImage = (item: HomeNewsItem) => {
     if (!item.imageUrl.trim()) {
-      announceStatus('Esta noticia ja esta sem imagem.');
+      announceStatus('Esta notícia já está sem imagem.');
       return;
     }
     updateNews(item.id, { imageUrl: '' });
@@ -773,7 +779,7 @@ export const AdminPage = () => {
 
   const handleClearNewsLink = (item: HomeNewsItem) => {
     if (!item.link.trim()) {
-      announceStatus('Esta noticia ja esta sem link.');
+      announceStatus('Esta notícia já está sem link.');
       return;
     }
     updateNews(item.id, { link: '' });
@@ -798,9 +804,9 @@ export const AdminPage = () => {
     setDraft(result.normalized);
     if (result.remoteSaved) {
       setLastSavedSnapshot(JSON.stringify(result.normalized));
-      announceStatus('Publicacao salva no banco de dados.');
+      announceStatus('Publicação salva no banco de dados.');
     } else {
-      announceStatus(`Falha ao salvar no banco. ${result.errorMessage ?? 'A publicacao nao foi gravada.'}`);
+      announceStatus(`Falha ao salvar no banco. ${result.errorMessage ?? 'A publicação não foi gravada.'}`);
     }
   };
 
@@ -809,9 +815,9 @@ export const AdminPage = () => {
     setDraft(result.normalized);
     if (result.remoteSaved) {
       setLastSavedSnapshot(JSON.stringify(result.normalized));
-      announceStatus('Conteudo restaurado para o padrao no banco de dados.');
+      announceStatus('Conteúdo restaurado para o padrão no banco de dados.');
     } else {
-      announceStatus(`Falha ao restaurar o padrao no banco. ${result.errorMessage ?? 'A persistencia remota falhou.'}`);
+      announceStatus(`Falha ao restaurar o padrão no banco. ${result.errorMessage ?? 'A persistência remota falhou.'}`);
     }
   };
 
@@ -847,6 +853,21 @@ export const AdminPage = () => {
       </header>
 
       {status ? <p className="admin-status">{status}</p> : null}
+      <div className={`admin-publish-dock${hasUnsavedChanges ? ' is-dirty' : ''}`}>
+        <div className="admin-publish-dock-copy">
+          <p className="admin-news-side-kicker">Publicação do painel</p>
+          <h3>{publishStateLabel}</h3>
+          <p>{publishStateDescription}</p>
+        </div>
+        <div className="admin-news-save-actions">
+          <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
+            {publishButtonLabel}
+          </button>
+          <button type="button" className="admin-button-soft" onClick={discardUnsavedChanges} disabled={!hasUnsavedChanges}>
+            Descartar rascunho
+          </button>
+        </div>
+      </div>
 
       <section className="admin-card">
         <h2>Navegação do painel</h2>
@@ -1113,9 +1134,9 @@ export const AdminPage = () => {
         </p>
         <div className="admin-publish-bar">
           <div>
-            <p className="admin-news-side-kicker">Publicacao desta secao</p>
+            <p className="admin-news-side-kicker">Publicação desta seção</p>
             <h3>{publishStateLabel}</h3>
-            <p>Videos, fotos, folders e textos so entram no site depois de clicar em salvar.</p>
+            <p>Vídeos, fotos, folders e textos só entram no site depois de clicar em salvar.</p>
           </div>
           <div className="admin-news-save-actions">
             <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
@@ -1316,7 +1337,7 @@ export const AdminPage = () => {
           <div>
             <p className="admin-news-side-kicker">Fechar e publicar</p>
             <h3>{publishStateLabel}</h3>
-            <p>Se terminou esta secao, publique agora para mandar as alteracoes ao banco.</p>
+            <p>Se terminou esta seção, publique agora para mandar as alterações ao banco.</p>
           </div>
           <div className="admin-news-save-actions">
             <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
@@ -1332,28 +1353,28 @@ export const AdminPage = () => {
       <section id="admin-noticias" className="admin-card">
         <div className="admin-section-head">
           <div>
-            <h2>Noticias e reacoes - {editorThemeLabel}</h2>
-            <p className="admin-news-caption">Editor rapido com lista, preview e acoes de construcao.</p>
+          <h2>Notícias e reações - {editorThemeLabel}</h2>
+          <p className="admin-news-caption">Editor rápido com lista, prévia e ações de construção.</p>
           </div>
           <div className="admin-section-actions">
             <button type="button" onClick={() => addNewsItem('padrao')}>
-              Nova noticia
+              Nova notícia
             </button>
             <button type="button" className="admin-button-soft" onClick={() => addNewsItem('destaque')}>
               Modelo destaque
             </button>
             <button type="button" className="admin-button-soft" onClick={() => addNewsItem('reacao')}>
-              Modelo reacao
+              Modelo reação
             </button>
           </div>
         </div>
         <p className="admin-helper-text">
-          Aqui voce acompanha o que ja esta publicado, cria rascunhos novos e confere a aparencia final da secao antes
+          Aqui você acompanha o que já está publicado, cria rascunhos novos e confere a aparência final da seção antes
           de salvar no site.
         </p>
         <div className="admin-news-stat-row">
           <p className="admin-news-stat-chip">
-            <strong>{filteredNewsStats.total}</strong> noticias no rascunho em <span>{newsScopeLabel}</span>
+            <strong>{filteredNewsStats.total}</strong> notícias no rascunho em <span>{newsScopeLabel}</span>
           </p>
           <p className="admin-news-stat-chip">
             <strong>{publishedFilteredNews.length}</strong> publicadas agora
@@ -1365,7 +1386,7 @@ export const AdminPage = () => {
             <strong>{filteredNewsStats.withImage}</strong> com imagem
           </p>
           <p className="admin-news-stat-chip">
-            <strong>{filteredNewsStats.missingReaction}</strong> sem reacao pronta
+            <strong>{filteredNewsStats.missingReaction}</strong> sem reação pronta
           </p>
           <p className="admin-news-stat-chip">
             <strong>{filteredNewsStats.missingLink}</strong> sem link
@@ -1380,7 +1401,7 @@ export const AdminPage = () => {
                   <div>
                     <p className="admin-news-side-kicker">Publicadas agora</p>
                     <h3>{publishedFilteredNews.length ? `${publishedFilteredNews.length} no ar` : newsScopeLabel}</h3>
-                    <p>Use esta lista para abrir a materia ja publicada, excluir ou levar para destaque.</p>
+                    <p>Use esta lista para abrir a matéria já publicada, excluir ou levar para destaque.</p>
                   </div>
                   <button
                     type="button"
@@ -1412,7 +1433,7 @@ export const AdminPage = () => {
                           }
                         : JSON.stringify(draftVersion) !== JSON.stringify(item)
                           ? {
-                              label: 'Edicao pendente',
+                              label: 'Edição pendente',
                               tone: 'changed',
                             }
                           : {
@@ -1430,7 +1451,7 @@ export const AdminPage = () => {
                           >
                             <div className="admin-news-card-thumb">
                               {cardImage ? (
-                                <img src={cardImage} alt={displayItem.title || 'Noticia'} />
+                                <img src={cardImage} alt={displayItem.title || 'Notícia'} />
                               ) : (
                                 <div className="admin-news-card-placeholder">Sem imagem</div>
                               )}
@@ -1441,7 +1462,7 @@ export const AdminPage = () => {
                                 <span className="admin-news-theme-pill">{themeLabel}</span>
                                 <span className={`admin-news-state admin-news-state-${statusMeta.tone}`}>{statusMeta.label}</span>
                               </div>
-                              <h3>{displayItem.title || 'Noticia sem titulo'}</h3>
+                              <h3>{displayItem.title || 'Notícia sem título'}</h3>
                               <p className="admin-news-card-date">{formatNewsDateLabel(displayItem.date)}</p>
                               <p className="admin-news-card-summary">{previewText}</p>
                             </div>
@@ -1469,7 +1490,7 @@ export const AdminPage = () => {
                     })}
                   </div>
                 ) : (
-                  <p className="admin-empty-state">Nenhuma noticia publicada nesta aba ou busca.</p>
+                  <p className="admin-empty-state">Nenhuma notícia publicada nesta aba ou busca.</p>
                 )}
               </section>
 
@@ -1478,7 +1499,7 @@ export const AdminPage = () => {
                   <div>
                     <p className="admin-news-side-kicker">Novas no rascunho</p>
                     <h3>{draftOnlyNews.length ? `${draftOnlyNews.length} para revisar` : 'Sem novidades'}</h3>
-                    <p>Itens criados agora ou ainda nao publicados aparecem aqui.</p>
+                    <p>Itens criados agora ou ainda não publicados aparecem aqui.</p>
                   </div>
                   <button
                     type="button"
@@ -1511,7 +1532,7 @@ export const AdminPage = () => {
                           >
                             <div className="admin-news-card-thumb">
                               {cardImage ? (
-                                <img src={cardImage} alt={item.title || 'Noticia'} />
+                                  <img src={cardImage} alt={item.title || 'Notícia'} />
                               ) : (
                                 <div className="admin-news-card-placeholder">Sem imagem</div>
                               )}
@@ -1522,7 +1543,7 @@ export const AdminPage = () => {
                                 <span className="admin-news-theme-pill">{themeLabel}</span>
                                 <span className="admin-news-state admin-news-state-new">Nova</span>
                               </div>
-                              <h3>{item.title || 'Noticia sem titulo'}</h3>
+                              <h3>{item.title || 'Notícia sem título'}</h3>
                               <p className="admin-news-card-date">{formatNewsDateLabel(item.date)}</p>
                               <p className="admin-news-card-summary">{previewText}</p>
                             </div>
@@ -1544,7 +1565,7 @@ export const AdminPage = () => {
                     })}
                   </div>
                 ) : (
-                  <p className="admin-empty-state">Nenhuma noticia nova foi criada neste rascunho.</p>
+                  <p className="admin-empty-state">Nenhuma notícia nova foi criada neste rascunho.</p>
                 )}
               </section>
             </aside>
@@ -1554,8 +1575,8 @@ export const AdminPage = () => {
                 <>
                   <div className="admin-news-editor-head">
                     <div>
-                      <p className="admin-news-side-kicker">{selectedNewsPlacement?.label ?? 'Edicao'}</p>
-                      <h3>{selectedNews.title || 'Noticia sem titulo'}</h3>
+                      <p className="admin-news-side-kicker">{selectedNewsPlacement?.label ?? 'Edição'}</p>
+                      <h3>{selectedNews.title || 'Notícia sem título'}</h3>
                       <p>
                         Item {selectedNewsPosition + 1} de {filteredNews.length} em {newsScopeLabel}.
                       </p>
@@ -1580,9 +1601,9 @@ export const AdminPage = () => {
 
                   <div className="admin-news-save-bar">
                     <div>
-                      <p className="admin-news-side-kicker">Publicacao</p>
-                      <h3>{hasUnsavedChanges ? 'Alteracoes prontas para publicar' : 'Rascunho ja publicado'}</h3>
-                      <p>As acoes rapidas e a edicao so aparecem no site depois de clicar em salvar.</p>
+                      <p className="admin-news-side-kicker">Publicação</p>
+                      <h3>{hasUnsavedChanges ? 'Alterações prontas para publicar' : 'Rascunho já publicado'}</h3>
+                      <p>As ações rápidas e a edição só aparecem no site depois de clicar em salvar.</p>
                     </div>
                     <div className="admin-news-save-actions">
                       <button type="button" onClick={saveDraft} disabled={!hasUnsavedChanges}>
@@ -1599,14 +1620,14 @@ export const AdminPage = () => {
                   <section className="admin-news-publication-preview">
                     <div className="admin-news-preview-bar">
                       <div>
-                        <p className="admin-news-side-kicker">Previa antes de publicar</p>
-                        <h3>Resultado da secao de noticias ao salvar</h3>
+                        <p className="admin-news-side-kicker">Prévia antes de publicar</p>
+                        <h3>Resultado da seção de notícias ao salvar</h3>
                         <p>O quadro abaixo usa o mesmo modelo do destaque principal, lateral e grade da home.</p>
                       </div>
                       <p className="admin-news-preview-note">
                         {hasUnsavedChanges
                           ? 'Mostrando o rascunho atual. Nada disso vai para o site antes de salvar.'
-                          : 'O preview esta igual ao que ja foi publicado.'}
+                          : 'A prévia está igual ao que já foi publicado.'}
                       </p>
                     </div>
 
@@ -1631,14 +1652,14 @@ export const AdminPage = () => {
                                 </div>
                               </button>
                             ) : (
-                              <p className="portal-empty-text">Nenhuma noticia no rascunho para esta aba.</p>
+                              <p className="portal-empty-text">Nenhuma notícia no rascunho para esta aba.</p>
                             )}
                           </article>
 
                           <div className="portal-highlight-side">
                             <div className="admin-preview-placeholder">
-                              <p className="admin-news-side-kicker">Leitura rapida</p>
-                              <p>Selecione qualquer card da previa para editar esse item sem sair do contexto de publicacao.</p>
+                              <p className="admin-news-side-kicker">Leitura rápida</p>
+                              <p>Selecione qualquer card da prévia para editar esse item sem sair do contexto de publicação.</p>
                             </div>
 
                             {previewSecondaryNews ? (
@@ -1655,7 +1676,7 @@ export const AdminPage = () => {
                                   <p className="portal-news-date">{formatPortalNewsDateLabel(previewSecondaryNews.date)}</p>
                                   {previewSecondaryNews.summary.trim() ? <p>{previewSecondaryNews.summary}</p> : null}
                                   <span className="admin-preview-link-text">
-                                    {previewSecondaryNews.link.trim() ? 'Abrir noticia completa apos publicar' : 'Defina um link para esta noticia'}
+                                    {previewSecondaryNews.link.trim() ? 'Abrir notícia completa após publicar' : 'Defina um link para esta notícia'}
                                   </span>
                                 </button>
                               </article>
@@ -1669,11 +1690,11 @@ export const AdminPage = () => {
                       <section className="portal-news-section">
                         <div className="portal-news-inner">
                           <div className="portal-news-headline">
-                            <h2>Noticias - {newsScopeLabel}</h2>
+                            <h2>Notícias - {newsScopeLabel}</h2>
                             <p>
                               {previewMoreCount > 0
-                                ? `${previewGridNews.length} noticias visiveis agora e mais ${previewMoreCount} apos usar "Ver mais".`
-                                : 'Todas as noticias visiveis do rascunho aparecem nesta previa.'}
+                                ? `${previewGridNews.length} notícias visíveis agora e mais ${previewMoreCount} após usar "Ver mais".`
+                                : 'Todas as notícias visíveis do rascunho aparecem nesta prévia.'}
                             </p>
                           </div>
 
@@ -1703,7 +1724,7 @@ export const AdminPage = () => {
                               })}
                             </div>
                           ) : (
-                            <p className="portal-empty-text">As proximas noticias da grade aparecerao aqui.</p>
+                            <p className="portal-empty-text">As próximas notícias da grade aparecerão aqui.</p>
                           )}
                         </div>
                       </section>
@@ -1730,7 +1751,7 @@ export const AdminPage = () => {
 
                   <div className="admin-grid admin-news-editor-grid">
                     <label>
-                      Titulo
+                      Título
                       <input value={selectedNews.title} onChange={(event) => updateNews(selectedNews.id, { title: event.target.value })} />
                     </label>
                     <label>
@@ -1742,7 +1763,7 @@ export const AdminPage = () => {
                       />
                     </label>
                     <label>
-                      Tema da noticia
+                      Tema da notícia
                       <select
                         value={selectedNews.theme}
                         onChange={(event) => updateNews(selectedNews.id, { theme: event.target.value as HomeThemeKey })}
@@ -1766,7 +1787,7 @@ export const AdminPage = () => {
                       />
                     </label>
                     <label className="admin-span-2">
-                      Reacao
+                      Reação
                       <textarea
                         value={selectedNews.reaction}
                         onChange={(event) => updateNews(selectedNews.id, { reaction: event.target.value })}
@@ -1808,7 +1829,7 @@ export const AdminPage = () => {
               ) : (
                 <div className="admin-news-empty-shell">
                   <p className="admin-empty-state">
-                    Selecione uma noticia publicada ou crie uma nova para ver a previa antes de salvar.
+                    Selecione uma notícia publicada ou crie uma nova para ver a prévia antes de salvar.
                   </p>
                 </div>
               )}
@@ -1817,17 +1838,17 @@ export const AdminPage = () => {
         ) : (
           <div className="admin-news-empty-shell">
             <p className="admin-empty-state">
-              Nenhuma noticia encontrada para esta aba. Crie uma noticia nova ou use um modelo rapido para iniciar.
+              Nenhuma notícia encontrada para esta aba. Crie uma notícia nova ou use um modelo rápido para iniciar.
             </p>
             <div className="admin-section-actions">
               <button type="button" onClick={() => addNewsItem('padrao')}>
-                Nova noticia
+                Nova notícia
               </button>
               <button type="button" className="admin-button-soft" onClick={() => addNewsItem('destaque')}>
                 Modelo destaque
               </button>
               <button type="button" className="admin-button-soft" onClick={() => addNewsItem('reacao')}>
-                Modelo reacao
+                Modelo reação
               </button>
             </div>
           </div>

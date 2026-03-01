@@ -1,12 +1,14 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   HOME_THEME_OPTIONS,
+  compareHomeNewsItems,
   defaultHomeContent,
   loadHomeContent,
   saveHomeContent,
   syncHomeContentFromApi,
   type HomeCarouselItem,
   type HomeCarouselMediaType,
+  type HomeContent,
   type HomeMediaItem,
   type HomeMediaItemType,
   type HomeNewsItem,
@@ -26,10 +28,6 @@ const truncateText = (value: string, maxLength: number): string => {
   if (trimmed.length <= maxLength) return trimmed;
   return `${trimmed.slice(0, Math.max(0, maxLength - 1)).trimEnd()}...`;
 };
-const parseNewsDateValue = (value: string): number => {
-  const parsed = Date.parse(`${value}T00:00:00`);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
 const formatNewsDateLabel = (value: string): string => {
   if (!value.trim()) return 'Sem data';
   const parsed = new Date(`${value}T00:00:00`);
@@ -39,6 +37,12 @@ const formatNewsDateLabel = (value: string): string => {
     month: 'short',
     year: 'numeric',
   }).format(parsed);
+};
+const formatPortalNewsDateLabel = (value: string): string => {
+  if (!value.trim()) return 'Data nao informada';
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('pt-BR');
 };
 const getThemeLabel = (theme: HomeThemeKey): string => {
   return HOME_THEME_OPTIONS.find((option) => option.key === theme)?.label ?? theme;
@@ -77,6 +81,7 @@ const createNewsItem = (theme: HomeThemeKey, template: AdminNewsTemplate): HomeN
     imageUrl: '',
     link: '/mapas',
     reaction: 'Sem reacao registrada.',
+    priority: 0,
   };
 
   if (template === 'destaque') {
@@ -104,6 +109,30 @@ const getNewsPreviewImage = (item: HomeNewsItem, position: number, carousel: Hom
   if (item.imageUrl.trim()) return item.imageUrl.trim();
   if (!carousel.length) return '';
   return carousel[position % carousel.length]?.imageUrl ?? '';
+};
+
+const filterNewsItems = (
+  items: HomeNewsItem[],
+  themeSet: Set<HomeThemeKey>,
+  normalizedQuickSearch: string,
+): HomeNewsItem[] =>
+  items
+    .filter((item) => themeSet.has(item.theme))
+    .filter((item) => {
+      if (!normalizedQuickSearch) return true;
+      const haystack = normalizeSearch([item.title, item.summary, item.reaction, item.link, item.imageUrl, item.date].join(' '));
+      return haystack.includes(normalizedQuickSearch);
+    });
+
+const getNextNewsPriority = (items: HomeNewsItem[], theme: HomeThemeKey): number =>
+  items.reduce((maxPriority, item) => (item.theme === theme ? Math.max(maxPriority, item.priority) : maxPriority), 0) + 1;
+
+const parseSavedHomeContent = (snapshot: string): HomeContent => {
+  try {
+    return JSON.parse(snapshot) as HomeContent;
+  } catch {
+    return defaultHomeContent;
+  }
 };
 
 const readFileAsDataUrl = (file: File): Promise<string> => {
@@ -230,16 +259,28 @@ export const AdminPage = () => {
     };
   }, [isUnlocked]);
 
+  const publishedContent = useMemo(() => parseSavedHomeContent(lastSavedSnapshot), [lastSavedSnapshot]);
   const sortedNews = useMemo(
     () =>
       draft.news
         .map((item, index) => ({ item, index }))
         .sort((a, b) => {
-          const byDate = parseNewsDateValue(b.item.date) - parseNewsDateValue(a.item.date);
-          return byDate !== 0 ? byDate : a.index - b.index;
+          const byPlacement = compareHomeNewsItems(a.item, b.item);
+          return byPlacement !== 0 ? byPlacement : a.index - b.index;
         })
         .map(({ item }) => item),
     [draft.news],
+  );
+  const publishedSortedNews = useMemo(
+    () =>
+      publishedContent.news
+        .map((item, index) => ({ item, index }))
+        .sort((a, b) => {
+          const byPlacement = compareHomeNewsItems(a.item, b.item);
+          return byPlacement !== 0 ? byPlacement : a.index - b.index;
+        })
+        .map(({ item }) => item),
+    [publishedContent.news],
   );
   const draftSnapshot = useMemo(() => JSON.stringify(draft), [draft]);
   const hasUnsavedChanges = draftSnapshot !== lastSavedSnapshot;
@@ -256,15 +297,12 @@ export const AdminPage = () => {
     return items;
   }, [editorTheme, includeGeneralTheme]);
   const filteredNews = useMemo(
-    () =>
-      sortedNews
-        .filter((item) => editorThemeSet.has(item.theme))
-        .filter((item) => {
-          if (!normalizedQuickSearch) return true;
-          const haystack = normalizeSearch([item.title, item.summary, item.reaction, item.link, item.imageUrl, item.date].join(' '));
-          return haystack.includes(normalizedQuickSearch);
-        }),
+    () => filterNewsItems(sortedNews, editorThemeSet, normalizedQuickSearch),
     [sortedNews, editorThemeSet, normalizedQuickSearch],
+  );
+  const publishedFilteredNews = useMemo(
+    () => filterNewsItems(publishedSortedNews, editorThemeSet, normalizedQuickSearch),
+    [publishedSortedNews, editorThemeSet, normalizedQuickSearch],
   );
   const filteredMediaItems = useMemo(() => {
     const itemsByTheme = draft.mediaItems.filter((item) => editorThemeSet.has(item.theme));
@@ -281,6 +319,23 @@ export const AdminPage = () => {
       videos: draft.mediaItems.filter((item) => item.theme === editorTheme && item.type === 'video').length,
     };
   }, [draft.news, draft.mediaItems, editorTheme]);
+  const draftNewsById = useMemo(() => new Map(draft.news.map((item) => [item.id, item])), [draft.news]);
+  const publishedNewsById = useMemo(
+    () => new Map(publishedContent.news.map((item) => [item.id, item])),
+    [publishedContent.news],
+  );
+  const filteredNewsPositionById = useMemo(
+    () => new Map(filteredNews.map((item, index) => [item.id, index])),
+    [filteredNews],
+  );
+  const publishedNewsPositionById = useMemo(
+    () => new Map(publishedFilteredNews.map((item, index) => [item.id, index])),
+    [publishedFilteredNews],
+  );
+  const draftOnlyNews = useMemo(
+    () => filteredNews.filter((item) => !publishedNewsById.has(item.id)),
+    [filteredNews, publishedNewsById],
+  );
   const selectedNews = useMemo(
     () => filteredNews.find((item) => item.id === selectedNewsId) ?? filteredNews[0] ?? null,
     [filteredNews, selectedNewsId],
@@ -293,10 +348,29 @@ export const AdminPage = () => {
     () => (selectedNewsPosition >= 0 ? getNewsPlacementMeta(selectedNewsPosition) : null),
     [selectedNewsPosition],
   );
-  const selectedNewsPreviewImage = useMemo(
-    () => (selectedNews && selectedNewsPosition >= 0 ? getNewsPreviewImage(selectedNews, selectedNewsPosition, draft.carousel) : ''),
-    [draft.carousel, selectedNews, selectedNewsPosition],
+  const selectedPublishedNews = useMemo(
+    () => (selectedNews ? publishedNewsById.get(selectedNews.id) ?? null : null),
+    [publishedNewsById, selectedNews],
   );
+  const selectedNewsSaveState = useMemo(() => {
+    if (!selectedNews) return null;
+    if (!selectedPublishedNews) {
+      return {
+        label: 'Nova antes de publicar',
+        tone: 'new',
+      } as const;
+    }
+    if (JSON.stringify(selectedNews) !== JSON.stringify(selectedPublishedNews)) {
+      return {
+        label: 'Alterada no rascunho',
+        tone: 'changed',
+      } as const;
+    }
+    return {
+      label: 'Igual ao publicado',
+      tone: 'live',
+    } as const;
+  }, [selectedNews, selectedPublishedNews]);
   const filteredNewsStats = useMemo(
     () => ({
       total: filteredNews.length,
@@ -307,6 +381,18 @@ export const AdminPage = () => {
     [filteredNews],
   );
   const newsScopeLabel = includeGeneralTheme && editorTheme !== 'geral' ? `${editorThemeLabel} + Geral` : editorThemeLabel;
+  const previewPrimaryNews = filteredNews[0] ?? null;
+  const previewSecondaryNews = filteredNews[1] ?? null;
+  const previewGridNews = useMemo(() => filteredNews.slice(2, 8), [filteredNews]);
+  const previewMoreCount = Math.max(filteredNews.length - previewGridNews.length - 2, 0);
+  const previewPrimaryImage = useMemo(
+    () => (previewPrimaryNews ? getNewsPreviewImage(previewPrimaryNews, 0, draft.carousel) : ''),
+    [draft.carousel, previewPrimaryNews],
+  );
+  const previewSecondaryImage = useMemo(
+    () => (previewSecondaryNews ? getNewsPreviewImage(previewSecondaryNews, 1, draft.carousel) : ''),
+    [draft.carousel, previewSecondaryNews],
+  );
 
   useEffect(() => {
     if (!filteredNews.length) {
@@ -512,11 +598,46 @@ export const AdminPage = () => {
     }));
   };
 
+  const selectOrRestoreNewsItem = (item: HomeNewsItem) => {
+    setDraft((current) => {
+      if (current.news.some((entry) => entry.id === item.id)) {
+        return current;
+      }
+      return {
+        ...current,
+        news: [...current.news, { ...item }],
+      };
+    });
+    setSelectedNewsId(item.id);
+  };
+
+  const moveNewsToHighlight = (item: HomeNewsItem) => {
+    setDraft((current) => {
+      const existingItem = current.news.find((entry) => entry.id === item.id) ?? item;
+      const nextPriority = getNextNewsPriority(current.news, existingItem.theme);
+      const news = current.news.some((entry) => entry.id === item.id) ? current.news : [...current.news, { ...item }];
+
+      return {
+        ...current,
+        news: news.map((entry) => (entry.id === item.id ? { ...entry, priority: nextPriority } : entry)),
+      };
+    });
+    setSelectedNewsId(item.id);
+  };
+
   const addNewsItem = (template: AdminNewsTemplate = 'padrao') => {
     const nextNewsItem = createNewsItem(editorTheme, template);
     setDraft((current) => ({
       ...current,
-      news: [...current.news, nextNewsItem],
+      news: [
+        ...current.news,
+        template === 'destaque'
+          ? {
+              ...nextNewsItem,
+              priority: getNextNewsPriority(current.news, nextNewsItem.theme),
+            }
+          : nextNewsItem,
+      ],
     }));
     setSelectedNewsId(nextNewsItem.id);
   };
@@ -526,6 +647,7 @@ export const AdminPage = () => {
       ...item,
       id: makeId('news'),
       title: `${item.title || 'Noticia'} (copia)`,
+      priority: 0,
     };
 
     setDraft((current) => ({
@@ -1108,88 +1230,205 @@ export const AdminPage = () => {
           </div>
         </div>
         <p className="admin-helper-text">
-          Noticias listadas conforme a aba em edicao. Escolha um item na lista lateral para editar, duplicar, remover
-          ou montar a estrutura base sem abrir varios blocos.
+          Aqui voce acompanha o que ja esta publicado, cria rascunhos novos e confere a aparencia final da secao antes
+          de salvar no site.
         </p>
         <div className="admin-news-stat-row">
           <p className="admin-news-stat-chip">
-            <strong>{filteredNewsStats.total}</strong> noticias visiveis em <span>{newsScopeLabel}</span>
+            <strong>{filteredNewsStats.total}</strong> noticias no rascunho em <span>{newsScopeLabel}</span>
+          </p>
+          <p className="admin-news-stat-chip">
+            <strong>{publishedFilteredNews.length}</strong> publicadas agora
+          </p>
+          <p className="admin-news-stat-chip">
+            <strong>{draftOnlyNews.length}</strong> novas antes de publicar
           </p>
           <p className="admin-news-stat-chip">
             <strong>{filteredNewsStats.withImage}</strong> com imagem
           </p>
           <p className="admin-news-stat-chip">
-            <strong>{filteredNewsStats.missingLink}</strong> sem link
+            <strong>{filteredNewsStats.missingReaction}</strong> sem reacao pronta
           </p>
           <p className="admin-news-stat-chip">
-            <strong>{filteredNewsStats.missingReaction}</strong> sem reacao pronta
+            <strong>{filteredNewsStats.missingLink}</strong> sem link
           </p>
         </div>
 
-        {filteredNews.length ? (
+        {filteredNews.length || publishedFilteredNews.length ? (
           <div className="admin-news-workbench">
             <aside className="admin-news-sidebar">
-              <div className="admin-news-sidebar-head">
-                <div>
-                  <p className="admin-news-side-kicker">Lista filtrada</p>
-                  <h3>{newsScopeLabel}</h3>
+              <section className="admin-news-sidebar-section">
+                <div className="admin-news-sidebar-head">
+                  <div>
+                    <p className="admin-news-side-kicker">Publicadas agora</p>
+                    <h3>{publishedFilteredNews.length ? `${publishedFilteredNews.length} no ar` : newsScopeLabel}</h3>
+                    <p>Use esta lista para abrir a materia ja publicada, excluir ou levar para destaque.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-button-soft"
+                    onClick={() => selectOrRestoreNewsItem(publishedFilteredNews[0])}
+                    disabled={!publishedFilteredNews.length}
+                  >
+                    Editar primeira
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="admin-button-soft"
-                  onClick={() => setSelectedNewsId(filteredNews[0]?.id ?? null)}
-                >
-                  Ir para primeira
-                </button>
-              </div>
 
-              <div className="admin-news-list">
-                {filteredNews.map((item, index) => {
-                  const themeLabel = getThemeLabel(item.theme);
-                  const placement = getNewsPlacementMeta(index);
-                  const cardImage = getNewsPreviewImage(item, index, draft.carousel);
-                  const isSelected = selectedNews?.id === item.id;
-                  const previewText =
-                    truncateText(item.summary || item.reaction || 'Sem resumo cadastrado.', 120) || 'Sem resumo cadastrado.';
+                {publishedFilteredNews.length ? (
+                  <div className="admin-news-list">
+                    {publishedFilteredNews.map((item) => {
+                      const draftVersion = draftNewsById.get(item.id);
+                      const position = publishedNewsPositionById.get(item.id) ?? 0;
+                      const displayItem = draftVersion ?? item;
+                      const placement = getNewsPlacementMeta(position);
+                      const themeLabel = getThemeLabel(displayItem.theme);
+                      const cardImage = getNewsPreviewImage(displayItem, position, draft.carousel);
+                      const isSelected = selectedNews?.id === item.id;
+                      const previewText =
+                        truncateText(displayItem.summary || displayItem.reaction || 'Sem resumo cadastrado.', 120) ||
+                        'Sem resumo cadastrado.';
+                      const statusMeta = !draftVersion
+                        ? {
+                            label: 'Marcada para sair',
+                            tone: 'removed',
+                          }
+                        : JSON.stringify(draftVersion) !== JSON.stringify(item)
+                          ? {
+                              label: 'Edicao pendente',
+                              tone: 'changed',
+                            }
+                          : {
+                              label: 'Publicada',
+                              tone: 'live',
+                            };
 
-                  return (
-                    <article className={`admin-news-card${isSelected ? ' is-selected' : ''}`} key={item.id}>
-                      <button
-                        type="button"
-                        className="admin-news-card-main"
-                        onClick={() => setSelectedNewsId(item.id)}
-                        aria-pressed={isSelected}
-                      >
-                        <div className="admin-news-card-thumb">
-                          {cardImage ? (
-                            <img src={cardImage} alt={item.title || 'Noticia'} />
-                          ) : (
-                            <div className="admin-news-card-placeholder">Sem imagem</div>
-                          )}
-                        </div>
-                        <div className="admin-news-card-body">
-                          <div className="admin-news-card-meta">
-                            <span className={`admin-news-slot admin-news-slot-${placement.tone}`}>{placement.label}</span>
-                            <span className="admin-news-theme-pill">{themeLabel}</span>
+                      return (
+                        <article className={`admin-news-card${isSelected ? ' is-selected' : ''}`} key={item.id}>
+                          <button
+                            type="button"
+                            className="admin-news-card-main"
+                            onClick={() => selectOrRestoreNewsItem(displayItem)}
+                            aria-pressed={isSelected}
+                          >
+                            <div className="admin-news-card-thumb">
+                              {cardImage ? (
+                                <img src={cardImage} alt={displayItem.title || 'Noticia'} />
+                              ) : (
+                                <div className="admin-news-card-placeholder">Sem imagem</div>
+                              )}
+                            </div>
+                            <div className="admin-news-card-body">
+                              <div className="admin-news-card-meta">
+                                <span className={`admin-news-slot admin-news-slot-${placement.tone}`}>{placement.label}</span>
+                                <span className="admin-news-theme-pill">{themeLabel}</span>
+                                <span className={`admin-news-state admin-news-state-${statusMeta.tone}`}>{statusMeta.label}</span>
+                              </div>
+                              <h3>{displayItem.title || 'Noticia sem titulo'}</h3>
+                              <p className="admin-news-card-date">{formatNewsDateLabel(displayItem.date)}</p>
+                              <p className="admin-news-card-summary">{previewText}</p>
+                            </div>
+                          </button>
+
+                          <div className="admin-news-card-actions">
+                            <button type="button" className="admin-button-soft" onClick={() => selectOrRestoreNewsItem(displayItem)}>
+                              Editar
+                            </button>
+                            <button type="button" className="admin-button-soft" onClick={() => moveNewsToHighlight(displayItem)}>
+                              Mover para destaque
+                            </button>
+                            {draftVersion ? (
+                              <button type="button" className="admin-button-danger" onClick={() => removeNewsItem(item.id)}>
+                                Excluir
+                              </button>
+                            ) : (
+                              <button type="button" className="admin-button-soft" onClick={() => selectOrRestoreNewsItem(item)}>
+                                Restaurar
+                              </button>
+                            )}
                           </div>
-                          <h3>{item.title || 'Noticia sem titulo'}</h3>
-                          <p className="admin-news-card-date">{formatNewsDateLabel(item.date)}</p>
-                          <p className="admin-news-card-summary">{previewText}</p>
-                        </div>
-                      </button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="admin-empty-state">Nenhuma noticia publicada nesta aba ou busca.</p>
+                )}
+              </section>
 
-                      <div className="admin-news-card-actions">
-                        <button type="button" className="admin-button-soft" onClick={() => duplicateAndSelectNewsItem(item)}>
-                          Duplicar
-                        </button>
-                        <button type="button" className="admin-button-danger" onClick={() => removeNewsItem(item.id)}>
-                          Remover
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+              <section className="admin-news-sidebar-section">
+                <div className="admin-news-sidebar-head">
+                  <div>
+                    <p className="admin-news-side-kicker">Novas no rascunho</p>
+                    <h3>{draftOnlyNews.length ? `${draftOnlyNews.length} para revisar` : 'Sem novidades'}</h3>
+                    <p>Itens criados agora ou ainda nao publicados aparecem aqui.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-button-soft"
+                    onClick={() => setSelectedNewsId(draftOnlyNews[0]?.id ?? null)}
+                    disabled={!draftOnlyNews.length}
+                  >
+                    Abrir nova
+                  </button>
+                </div>
+
+                {draftOnlyNews.length ? (
+                  <div className="admin-news-list admin-news-draft-list">
+                    {draftOnlyNews.map((item) => {
+                      const position = filteredNewsPositionById.get(item.id) ?? 0;
+                      const placement = getNewsPlacementMeta(position);
+                      const themeLabel = getThemeLabel(item.theme);
+                      const cardImage = getNewsPreviewImage(item, position, draft.carousel);
+                      const isSelected = selectedNews?.id === item.id;
+                      const previewText =
+                        truncateText(item.summary || item.reaction || 'Sem resumo cadastrado.', 120) || 'Sem resumo cadastrado.';
+
+                      return (
+                        <article className={`admin-news-card${isSelected ? ' is-selected' : ''}`} key={item.id}>
+                          <button
+                            type="button"
+                            className="admin-news-card-main"
+                            onClick={() => setSelectedNewsId(item.id)}
+                            aria-pressed={isSelected}
+                          >
+                            <div className="admin-news-card-thumb">
+                              {cardImage ? (
+                                <img src={cardImage} alt={item.title || 'Noticia'} />
+                              ) : (
+                                <div className="admin-news-card-placeholder">Sem imagem</div>
+                              )}
+                            </div>
+                            <div className="admin-news-card-body">
+                              <div className="admin-news-card-meta">
+                                <span className={`admin-news-slot admin-news-slot-${placement.tone}`}>{placement.label}</span>
+                                <span className="admin-news-theme-pill">{themeLabel}</span>
+                                <span className="admin-news-state admin-news-state-new">Nova</span>
+                              </div>
+                              <h3>{item.title || 'Noticia sem titulo'}</h3>
+                              <p className="admin-news-card-date">{formatNewsDateLabel(item.date)}</p>
+                              <p className="admin-news-card-summary">{previewText}</p>
+                            </div>
+                          </button>
+
+                          <div className="admin-news-card-actions">
+                            <button type="button" className="admin-button-soft" onClick={() => setSelectedNewsId(item.id)}>
+                              Editar
+                            </button>
+                            <button type="button" className="admin-button-soft" onClick={() => moveNewsToHighlight(item)}>
+                              Mover para destaque
+                            </button>
+                            <button type="button" className="admin-button-danger" onClick={() => removeNewsItem(item.id)}>
+                              Excluir
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="admin-empty-state">Nenhuma noticia nova foi criada neste rascunho.</p>
+                )}
+              </section>
             </aside>
 
             <div className="admin-news-editor">
@@ -1202,10 +1441,18 @@ export const AdminPage = () => {
                       <p>
                         Item {selectedNewsPosition + 1} de {filteredNews.length} em {newsScopeLabel}.
                       </p>
+                      {selectedNewsSaveState ? (
+                        <p className={`admin-news-editor-status admin-news-state admin-news-state-${selectedNewsSaveState.tone}`}>
+                          {selectedNewsSaveState.label}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="admin-section-actions">
                       <button type="button" className="admin-button-soft" onClick={() => duplicateAndSelectNewsItem(selectedNews)}>
                         Duplicar selecionada
+                      </button>
+                      <button type="button" className="admin-button-soft" onClick={() => moveNewsToHighlight(selectedNews)}>
+                        Mover para destaque
                       </button>
                       <button type="button" className="admin-button-danger" onClick={() => removeNewsItem(selectedNews.id)}>
                         Remover selecionada
@@ -1213,41 +1460,124 @@ export const AdminPage = () => {
                     </div>
                   </div>
 
-                  <article className="admin-news-preview">
-                    <div className="admin-news-preview-media">
-                      {selectedNewsPreviewImage ? (
-                        <img src={selectedNewsPreviewImage} alt={selectedNews.title || 'Noticia'} />
-                      ) : (
-                        <div className="admin-news-preview-empty">Sem imagem definida</div>
-                      )}
-                    </div>
-                    <div className="admin-news-preview-body">
-                      <div className="admin-news-card-meta">
-                        {selectedNewsPlacement ? (
-                          <span className={`admin-news-slot admin-news-slot-${selectedNewsPlacement.tone}`}>
-                            {selectedNewsPlacement.label}
-                          </span>
-                        ) : null}
-                        <span className="admin-news-theme-pill">{getThemeLabel(selectedNews.theme)}</span>
-                        <span className="admin-news-theme-pill">{formatNewsDateLabel(selectedNews.date)}</span>
+                  <section className="admin-news-publication-preview">
+                    <div className="admin-news-preview-bar">
+                      <div>
+                        <p className="admin-news-side-kicker">Previa antes de publicar</p>
+                        <h3>Resultado da secao de noticias ao salvar</h3>
+                        <p>O quadro abaixo usa o mesmo modelo do destaque principal, lateral e grade da home.</p>
                       </div>
-                      <h3>{selectedNews.title || 'Noticia sem titulo'}</h3>
-                      <p>
-                        {selectedNews.summary.trim() || 'Resumo vazio. Esta area mostra como a noticia deve aparecer no portal.'}
+                      <p className="admin-news-preview-note">
+                        {hasUnsavedChanges
+                          ? 'Mostrando o rascunho atual. Nada disso vai para o site antes de salvar.'
+                          : 'O preview esta igual ao que ja foi publicado.'}
                       </p>
-                      <blockquote>{selectedNews.reaction.trim() || 'Reacao ainda nao preenchida.'}</blockquote>
-                      <div className="admin-news-preview-footer">
-                        <span>{selectedNews.link.trim() || 'Sem link definido'}</span>
-                        {selectedNews.link.trim() ? (
-                          <a className="admin-external-link" href={selectedNews.link} target="_blank" rel="noreferrer">
-                            Abrir link
-                          </a>
-                        ) : null}
-                      </div>
                     </div>
-                  </article>
+
+                    <div className="admin-news-preview-shell portal-shell portal-editorial">
+                      <section className="portal-highlight-section">
+                        <div className="portal-highlight-inner">
+                          <article className="portal-news-primary">
+                            {previewPrimaryNews ? (
+                              <button
+                                type="button"
+                                className={`portal-news-primary-link admin-preview-card-button${
+                                  selectedNews.id === previewPrimaryNews.id ? ' is-selected' : ''
+                                }`}
+                                onClick={() => setSelectedNewsId(previewPrimaryNews.id)}
+                              >
+                                {previewPrimaryImage ? <img src={previewPrimaryImage} alt={previewPrimaryNews.title} /> : null}
+                                <div className="portal-news-primary-body">
+                                  <p className="portal-news-primary-theme">{getThemeLabel(previewPrimaryNews.theme)}</p>
+                                  <p className="portal-news-date">{formatPortalNewsDateLabel(previewPrimaryNews.date)}</p>
+                                  <h3>{previewPrimaryNews.title}</h3>
+                                  {previewPrimaryNews.summary.trim() ? <p>{previewPrimaryNews.summary}</p> : null}
+                                </div>
+                              </button>
+                            ) : (
+                              <p className="portal-empty-text">Nenhuma noticia no rascunho para esta aba.</p>
+                            )}
+                          </article>
+
+                          <div className="portal-highlight-side">
+                            <div className="admin-preview-placeholder">
+                              <p className="admin-news-side-kicker">Leitura rapida</p>
+                              <p>Selecione qualquer card da previa para editar esse item sem sair do contexto de publicacao.</p>
+                            </div>
+
+                            {previewSecondaryNews ? (
+                              <article className="portal-news-secondary">
+                                <button
+                                  type="button"
+                                  className={`admin-preview-card-button admin-preview-secondary-button${
+                                    selectedNews.id === previewSecondaryNews.id ? ' is-selected' : ''
+                                  }`}
+                                  onClick={() => setSelectedNewsId(previewSecondaryNews.id)}
+                                >
+                                  {previewSecondaryImage ? <img src={previewSecondaryImage} alt={previewSecondaryNews.title} /> : null}
+                                  <h3>{previewSecondaryNews.title}</h3>
+                                  <p className="portal-news-date">{formatPortalNewsDateLabel(previewSecondaryNews.date)}</p>
+                                  {previewSecondaryNews.summary.trim() ? <p>{previewSecondaryNews.summary}</p> : null}
+                                  <span className="admin-preview-link-text">
+                                    {previewSecondaryNews.link.trim() ? 'Abrir noticia completa apos publicar' : 'Defina um link para esta noticia'}
+                                  </span>
+                                </button>
+                              </article>
+                            ) : (
+                              <div className="admin-preview-empty-card">Sem destaque lateral no rascunho.</div>
+                            )}
+                          </div>
+                        </div>
+                      </section>
+
+                      <section className="portal-news-section">
+                        <div className="portal-news-inner">
+                          <div className="portal-news-headline">
+                            <h2>Noticias - {newsScopeLabel}</h2>
+                            <p>
+                              {previewMoreCount > 0
+                                ? `${previewGridNews.length} noticias visiveis agora e mais ${previewMoreCount} apos usar "Ver mais".`
+                                : 'Todas as noticias visiveis do rascunho aparecem nesta previa.'}
+                            </p>
+                          </div>
+
+                          {previewGridNews.length ? (
+                            <div className="portal-news-feed-grid">
+                              {previewGridNews.map((item, index) => {
+                                const position = index + 2;
+                                const cardImage = getNewsPreviewImage(item, position, draft.carousel);
+                                return (
+                                  <article key={item.id} className="portal-news-feed-card">
+                                    <button
+                                      type="button"
+                                      className={`admin-preview-card-button admin-preview-feed-button${
+                                        selectedNews.id === item.id ? ' is-selected' : ''
+                                      }`}
+                                      onClick={() => setSelectedNewsId(item.id)}
+                                    >
+                                      {cardImage ? <img src={cardImage} alt={item.title} /> : null}
+                                      <div>
+                                        <p className="portal-news-date">{formatPortalNewsDateLabel(item.date)}</p>
+                                        <h3>{item.title}</h3>
+                                        {item.summary.trim() ? <p>{item.summary}</p> : null}
+                                      </div>
+                                    </button>
+                                  </article>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="portal-empty-text">As proximas noticias da grade aparecerao aqui.</p>
+                          )}
+                        </div>
+                      </section>
+                    </div>
+                  </section>
 
                   <div className="admin-news-quick-actions">
+                    <button type="button" className="admin-button-soft" onClick={() => moveNewsToHighlight(selectedNews)}>
+                      Mover para destaque
+                    </button>
                     <button type="button" className="admin-button-soft" onClick={() => applyNewsStructure(selectedNews)}>
                       Aplicar estrutura base
                     </button>
@@ -1330,7 +1660,13 @@ export const AdminPage = () => {
                     </label>
                   </div>
                 </>
-              ) : null}
+              ) : (
+                <div className="admin-news-empty-shell">
+                  <p className="admin-empty-state">
+                    Selecione uma noticia publicada ou crie uma nova para ver a previa antes de salvar.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         ) : (

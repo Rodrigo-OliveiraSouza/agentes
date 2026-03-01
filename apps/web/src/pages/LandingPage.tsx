@@ -3,6 +3,7 @@ import { MapCanvas } from '../components/MapCanvas';
 import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
 import {
+  compareHomeNewsItems,
   homeContentUpdateEvent,
   loadHomeContent,
   syncHomeContentFromApi,
@@ -92,25 +93,6 @@ const formatDateLabel = (isoDate: string): string => {
   const parsed = new Date(`${isoDate}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return isoDate;
   return parsed.toLocaleDateString('pt-BR');
-};
-
-const parseNewsDateValue = (rawDate: string): number => {
-  const normalized = rawDate.trim();
-  if (!normalized) return 0;
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-    const [year, month, day] = normalized.split('-').map((value) => Number(value));
-    return Date.UTC(year, month - 1, day);
-  }
-
-  const brDate = normalized.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (brDate) {
-    const [, day, month, year] = brDate;
-    return Date.UTC(Number(year), Number(month) - 1, Number(day));
-  }
-
-  const parsed = Date.parse(normalized);
-  return Number.isNaN(parsed) ? 0 : parsed;
 };
 
 export const LandingPage = () => {
@@ -339,7 +321,7 @@ export const LandingPage = () => {
   }, [points, selectedCode]);
 
   const newsByRecency = useMemo(
-    () => [...content.news].sort((a, b) => parseNewsDateValue(b.date) - parseNewsDateValue(a.date)),
+    () => [...content.news].sort(compareHomeNewsItems),
     [content.news],
   );
 
@@ -362,7 +344,7 @@ export const LandingPage = () => {
   }, [filteredNews, activeTheme]);
 
   const orderedThemeNews = useMemo(
-    () => [...themeNews].sort((a, b) => parseNewsDateValue(b.date) - parseNewsDateValue(a.date)),
+    () => [...themeNews].sort(compareHomeNewsItems),
     [themeNews],
   );
 
@@ -812,7 +794,6 @@ export const LandingPage = () => {
     </div>
   );
 };
-
 
 
 

@@ -38,6 +38,7 @@ export type HomeNewsItem = {
   imageUrl: string;
   link: string;
   reaction: string;
+  priority: number;
 };
 
 export type HomeMediaItem = {
@@ -62,6 +63,38 @@ export type HomeContent = {
 
 const STORAGE_KEY = 'luiza-barros-home-content-v1';
 const STORAGE_EVENT = 'luiza-barros-home-content-updated';
+
+const normalizeNewsPriority = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.trunc(value));
+};
+
+const parseNewsDateValue = (rawDate: string): number => {
+  const normalized = rawDate.trim();
+  if (!normalized) return 0;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    const [year, month, day] = normalized.split('-').map((value) => Number(value));
+    return Date.UTC(year, month - 1, day);
+  }
+
+  const brDate = normalized.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (brDate) {
+    const [, day, month, year] = brDate;
+    return Date.UTC(Number(year), Number(month) - 1, Number(day));
+  }
+
+  const parsed = Date.parse(normalized);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+export const compareHomeNewsItems = (a: HomeNewsItem, b: HomeNewsItem): number => {
+  const byPriority = normalizeNewsPriority(b.priority) - normalizeNewsPriority(a.priority);
+  if (byPriority !== 0) return byPriority;
+  return parseNewsDateValue(b.date) - parseNewsDateValue(a.date);
+};
 
 export const defaultHomeContent: HomeContent = {
   projectName: 'Esinapir',
@@ -106,6 +139,7 @@ export const defaultHomeContent: HomeContent = {
       imageUrl: slideOne,
       link: 'https://pnit.infinity.dev.br/',
       reaction: 'Comunidade: alta adesão e retorno positivo.',
+      priority: 3,
     },
     {
       id: 'news-02',
@@ -116,6 +150,7 @@ export const defaultHomeContent: HomeContent = {
       imageUrl: slideTwo,
       link: '/mapas',
       reaction: 'Técnicos: melhora na leitura para planejamento.',
+      priority: 2,
     },
     {
       id: 'news-03',
@@ -126,6 +161,7 @@ export const defaultHomeContent: HomeContent = {
       imageUrl: slideThree,
       link: 'https://plataformadiversifica.vercel.app/',
       reaction: 'Gestão: ganho de confiabilidade nas publicações.',
+      priority: 1,
     },
   ],
   mediaItems: [
@@ -256,6 +292,7 @@ const sanitizeContent = (value: unknown): HomeContent => {
               imageUrl: item.imageUrl?.trim() || '',
               link: item.link?.trim() || '/mapas',
               reaction: item.reaction?.trim() || 'Sem reação registrada.',
+              priority: normalizeNewsPriority(item.priority),
             };
           })
           .slice(0, 30)

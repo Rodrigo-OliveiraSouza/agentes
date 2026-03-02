@@ -4810,7 +4810,7 @@ body[data-theme-mode='dark'] .compare-item select {
   color: var(--map-theme-text);
   margin-top: 0;
   padding: 13px 16px 16px;
-  border-top: 0;
+  border-top: 1px solid var(--map-theme-divider);
   border-bottom: 0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }

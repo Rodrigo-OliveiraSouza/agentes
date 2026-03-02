@@ -5073,11 +5073,27 @@ body[data-theme-mode='dark'] .map-governance-inner p,
 body[data-theme-mode='dark'] .map-governance-links a,
 body[data-theme-mode='dark'] .filter-group label,
 body[data-theme-mode='dark'] .map-actions-select {
-  color: #dccabd;
+  color: #edd9c5;
 }
 
 body[data-theme-mode='dark'] .map-governance-links a {
   border-bottom-color: rgba(232, 213, 193, 0.62);
+}
+
+body[data-theme-mode='dark'] .map-governance-title,
+body[data-theme-mode='dark'] .map-header h2,
+body[data-theme-mode='dark'] .panel-head h2,
+body[data-theme-mode='dark'] .panel-main-text,
+body[data-theme-mode='dark'] .panel-selected-name,
+body[data-theme-mode='dark'] .panel-value {
+  color: #fff3e6;
+}
+
+body[data-theme-mode='dark'] .panel-subtitle,
+body[data-theme-mode='dark'] .panel-label,
+body[data-theme-mode='dark'] .panel-empty,
+body[data-theme-mode='dark'] .panel-insights p {
+  color: #edd9c5;
 }
 
 body[data-theme-mode='dark'] .map-header-kicker,
@@ -5116,6 +5132,24 @@ body[data-theme-mode='dark'] .map-more-actions-select select {
 
 body[data-theme-mode='dark'] .map-more-actions-select span {
   color: #e8d5c1;
+}
+
+body[data-theme-mode='dark'] .filter-group select,
+body[data-theme-mode='dark'] .filter-group input,
+body[data-theme-mode='dark'] .map-actions-select select {
+  background: #3a2417;
+  color: #f6e8da;
+  border-color: #8a6348;
+}
+
+body[data-theme-mode='dark'] .filter-group input::placeholder {
+  color: #e5ccb5;
+  opacity: 1;
+}
+
+body[data-theme-mode='dark'] .filter-group select option {
+  background: #3a2417;
+  color: #f6e8da;
 }
 
 body[data-theme-mode='dark'] .content,

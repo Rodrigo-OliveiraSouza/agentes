@@ -5081,9 +5081,9 @@ body[data-theme-mode='dark'] .compare-item select {
 
 .portal-header-v2 .portal-search-inline-v2 {
   position: relative;
-  flex: 0 0 200px;
-  width: 200px;
-  min-width: 160px;
+  flex: 0 1 clamp(128px, 13vw, 176px);
+  width: clamp(128px, 13vw, 176px);
+  min-width: 120px;
 }
 
 .portal-header-v2 .portal-search-icon {
@@ -5375,9 +5375,9 @@ body.portal-mobile-menu-open {
   }
 
   .portal-header-v2 .portal-search-inline-v2 {
-    flex: 0 1 160px;
-    width: 160px;
-    min-width: 138px;
+    flex: 0 1 144px;
+    width: 144px;
+    min-width: 120px;
   }
 }
 

@@ -466,7 +466,7 @@ export const LandingPage = () => {
                   className="portal-search-field"
                   value={newsQuery}
                   onChange={(event) => setNewsQuery(event.target.value)}
-                  placeholder="Buscar noticias..."
+                  placeholder="Busca"
                   aria-label="Buscar noticias e reacoes"
                 />
               </div>
@@ -498,7 +498,7 @@ export const LandingPage = () => {
                   className="portal-search-field"
                   value={newsQuery}
                   onChange={(event) => setNewsQuery(event.target.value)}
-                  placeholder="Buscar noticias..."
+                  placeholder="Busca"
                   aria-label="Buscar noticias e reacoes"
                 />
               </div>

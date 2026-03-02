@@ -6,6 +6,8 @@ import { ApiError } from '../lib/errors';
 import type { AppBindings } from '../lib/types';
 
 const HOME_CONTENT_KEY = 'landing-page';
+const MAX_INLINE_IMAGE_URL_BYTES = 100_000;
+const HOME_CONTENT_IMAGE_SECTIONS = ['carousel', 'news', 'mediaItems'] as const;
 
 const payloadSchema = z.object({
   content: z.record(z.string(), z.unknown()),
@@ -27,6 +29,58 @@ const parseStoredPayload = (value: unknown): Record<string, unknown> | null => {
     }
   }
   return null;
+};
+
+const getUtf8ByteLength = (value: string): number => new TextEncoder().encode(value).length;
+
+const isOversizedInlineImageUrl = (value: unknown): value is string => {
+  return typeof value === 'string' && value.trim().startsWith('data:image/') && getUtf8ByteLength(value) > MAX_INLINE_IMAGE_URL_BYTES;
+};
+
+const sanitizeImageItems = (value: unknown): unknown => {
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  return value.map((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return item;
+    }
+
+    const nextItem = { ...(item as Record<string, unknown>) };
+    if (isOversizedInlineImageUrl(nextItem.imageUrl)) {
+      nextItem.imageUrl = '';
+    }
+
+    return nextItem;
+  });
+};
+
+const sanitizeOversizedInlineImages = (payload: Record<string, unknown>): Record<string, unknown> => {
+  const nextPayload = { ...payload };
+
+  for (const section of HOME_CONTENT_IMAGE_SECTIONS) {
+    nextPayload[section] = sanitizeImageItems(nextPayload[section]);
+  }
+
+  return nextPayload;
+};
+
+const hasOversizedInlineImages = (payload: Record<string, unknown>): boolean => {
+  return HOME_CONTENT_IMAGE_SECTIONS.some((section) => {
+    const items = payload[section];
+    if (!Array.isArray(items)) {
+      return false;
+    }
+
+    return items.some((item) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) {
+        return false;
+      }
+
+      return isOversizedInlineImageUrl((item as Record<string, unknown>).imageUrl);
+    });
+  });
 };
 
 const buildDatabaseError = (code: string, action: string, error: unknown): ApiError => {
@@ -67,8 +121,9 @@ homeContentRoute.get('/', async (c) => {
     }
 
     const row = rows[0];
+    const parsedPayload = parseStoredPayload(row.payload);
     return c.json({
-      item: parseStoredPayload(row.payload),
+      item: parsedPayload ? sanitizeOversizedInlineImages(parsedPayload) : null,
       updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
       persisted: true,
     });
@@ -88,6 +143,14 @@ homeContentRoute.put('/', zValidator('json', payloadSchema), async (c) => {
   }
 
   const { content } = c.req.valid('json');
+  if (hasOversizedInlineImages(content)) {
+    throw new ApiError(
+      400,
+      'OVERSIZED_INLINE_IMAGE_UNSUPPORTED',
+      'Imagens inline muito grandes não podem ser publicadas na home. Use uma URL pública ou um arquivo servido por apps/web/public.',
+    );
+  }
+
   const serializedContent = JSON.stringify(content);
 
   try {

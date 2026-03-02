@@ -65,6 +65,7 @@ const STORAGE_EVENT = 'luiza-barros-home-content-updated';
 const MAX_HOME_CAROUSEL_ITEMS = 24;
 const MAX_HOME_NEWS_ITEMS = 120;
 const MAX_HOME_MEDIA_ITEMS = 120;
+const MAX_INLINE_IMAGE_URL_BYTES = 100_000;
 
 const normalizeNewsPriority = (value: unknown): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -237,6 +238,49 @@ const cloneContent = (content: HomeContent): HomeContent => ({
   mediaItems: content.mediaItems.map((item) => ({ ...item })),
 });
 
+const getUtf8ByteLength = (value: string): number => new TextEncoder().encode(value).length;
+
+const isOversizedInlineImageUrl = (value: string): boolean => {
+  return value.trim().startsWith('data:image/') && getUtf8ByteLength(value) > MAX_INLINE_IMAGE_URL_BYTES;
+};
+
+type HomeContentImageIssue = {
+  id: string;
+  section: 'carousel' | 'news' | 'mediaItems';
+  title: string;
+};
+
+const collectOversizedInlineImageIssues = (content: HomeContent): HomeContentImageIssue[] => {
+  const collect = <T extends { id: string; title: string; imageUrl: string }>(
+    section: HomeContentImageIssue['section'],
+    items: T[],
+  ): HomeContentImageIssue[] =>
+    items
+      .filter((item) => isOversizedInlineImageUrl(item.imageUrl))
+      .map((item) => ({
+        id: item.id,
+        section,
+        title: item.title.trim() || item.id,
+      }));
+
+  return [
+    ...collect('carousel', content.carousel),
+    ...collect('news', content.news),
+    ...collect('mediaItems', content.mediaItems),
+  ];
+};
+
+const buildOversizedInlineImageErrorMessage = (issues: HomeContentImageIssue[]): string => {
+  const preview = issues
+    .slice(0, 3)
+    .map((issue) => `${issue.section}:${issue.title}`)
+    .join(', ');
+  const remainingCount = Math.max(issues.length - 3, 0);
+  const remainingMessage = remainingCount ? ` e mais ${remainingCount}` : '';
+
+  return `Não foi possível publicar porque há imagens inline muito grandes em ${preview}${remainingMessage}. Use URL pública ou arquivo em apps/web/public.`;
+};
+
 const THEME_FALLBACK_SEQUENCE: HomeThemeKey[] = ['politica', 'economia', 'saude', 'educacao', 'seguranca', 'demografia', 'infraestrutura'];
 
 const normalizeThemeKey = (value: unknown, fallbackTheme: HomeThemeKey): HomeThemeKey => {
@@ -363,6 +407,16 @@ export const saveHomeContent = async (
   errorMessage: string | null;
 }> => {
   const normalized = prepareHomeContent(content);
+  const inlineImageIssues = collectOversizedInlineImageIssues(normalized);
+
+  if (inlineImageIssues.length) {
+    return {
+      normalized,
+      remoteSaved: false,
+      remoteUpdatedAt: null,
+      errorMessage: buildOversizedInlineImageErrorMessage(inlineImageIssues),
+    };
+  }
 
   try {
     const result = await api.saveHomeContent(normalized);

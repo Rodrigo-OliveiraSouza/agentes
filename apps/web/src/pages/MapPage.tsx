@@ -717,11 +717,6 @@ export const MapPage = () => {
     window.setTimeout(() => setShareNotice(''), 2400);
   };
 
-  const handleApplyFilters = () => {
-    notifyShare('Filtros aplicados.');
-    setIsMoreActionsOpen(false);
-  };
-
   const handleShareFilters = async () => {
     if (typeof window === 'undefined') return;
     try {
@@ -864,7 +859,6 @@ export const MapPage = () => {
           </div>
 
           <header className="map-header">
-            <p className="map-header-kicker">Monitoramento de políticas públicas</p>
             <h2>Mapa e análise territorial</h2>
             <p>
               Consulte indicadores oficiais por município, compare territórios e acompanhe recortes de desigualdade
@@ -1000,9 +994,6 @@ export const MapPage = () => {
             <div className="filter-group filter-group-actions">
               <label>Ações</label>
               <div className="map-filter-actions">
-                <button type="button" className="map-filter-apply" onClick={handleApplyFilters}>
-                  Filtrar
-                </button>
                 <div className={`map-more-actions${isMoreActionsOpen ? ' is-open' : ''}`} ref={moreActionsRef}>
                   <button
                     type="button"

@@ -3204,7 +3204,7 @@ body,
 
 .map-header p {
   margin: 0;
-  max-width: 72ch;
+  max-width: none;
   color: #dbe7f5;
   font-size: 0.9rem;
 }

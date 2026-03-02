@@ -4715,17 +4715,17 @@ body[data-theme-mode='dark'] .compare-item select {
 }
 
 .map-shell {
-  background: linear-gradient(180deg, #eadccf 0%, #f4eadf 52%, #f7efe6 100%);
+  background: linear-gradient(180deg, #ece7e2 0%, #f3efeb 52%, #f7f4f1 100%);
 }
 
 .map-shell-inner {
-  background: linear-gradient(180deg, #fbf3e8 0%, #f3e7d9 100%);
+  background: linear-gradient(180deg, #f3efeb 0%, #ece6df 100%);
   border-color: var(--earth-border);
-  box-shadow: 0 16px 30px rgba(41, 23, 13, 0.1);
-  --map-theme-surface: #f3e7d9;
-  --map-theme-surface-soft: #f7ece0;
-  --map-theme-border-soft: #ddc5ad;
-  --map-theme-text: #3d2b20;
+  box-shadow: 0 14px 26px rgba(34, 28, 24, 0.08);
+  --map-theme-surface: #ebe4de;
+  --map-theme-surface-soft: #f5f1ee;
+  --map-theme-border-soft: #d7ccc3;
+  --map-theme-text: #2f2924;
 }
 
 .map-governance {
@@ -4746,7 +4746,7 @@ body[data-theme-mode='dark'] .compare-item select {
 
 .map-header-kicker,
 .map-share-notice {
-  color: #7a3b1f;
+  color: #695f56;
 }
 
 .map-header p,
@@ -4754,7 +4754,7 @@ body[data-theme-mode='dark'] .compare-item select {
 .map-governance-links a,
 .filter-group label,
 .map-actions-select {
-  color: #6b5648;
+  color: #70655d;
 }
 
 .map-governance-inner {
@@ -4765,7 +4765,7 @@ body[data-theme-mode='dark'] .compare-item select {
 }
 
 .map-governance-links a {
-  border-bottom-color: rgba(122, 59, 31, 0.45);
+  border-bottom-color: rgba(112, 101, 93, 0.34);
 }
 
 .topbar {
@@ -4784,40 +4784,40 @@ body[data-theme-mode='dark'] .compare-item select {
 
 .map-filter-apply,
 .map-more-actions-toggle {
-  border-color: #d2b89d;
+  border-color: #cfc2b7;
   background: var(--map-theme-surface-soft);
-  color: #3b291e;
+  color: #433a33;
 }
 
 .map-filter-apply {
-  background: #7a3b1f;
-  border-color: rgba(241, 216, 190, 0.45);
-  color: #f8ecde;
+  background: #a5663d;
+  border-color: #a5663d;
+  color: #fff8f1;
 }
 
 .map-more-actions-menu {
-  background: #fbf3e8;
-  border-color: #ddc5ad;
-  box-shadow: 0 16px 30px rgba(47, 27, 15, 0.18);
+  background: #f5f1ee;
+  border-color: #d7ccc3;
+  box-shadow: 0 14px 24px rgba(35, 30, 26, 0.16);
 }
 
 .map-more-actions-menu button,
 .map-more-actions-select select {
-  border-color: #d2b89d;
+  border-color: #cfc2b7;
   background: var(--map-theme-surface-soft);
-  color: #3b291e;
+  color: #433a33;
 }
 
 .map-more-actions-select span {
-  color: #6b5648;
+  color: #70655d;
 }
 
 .map-actions-select select,
 .filter-group select,
 .filter-group input {
-  border-color: #d2b89d;
+  border-color: #cfc2b7;
   background: var(--map-theme-surface-soft);
-  color: #3b291e;
+  color: #433a33;
 }
 
 .content,

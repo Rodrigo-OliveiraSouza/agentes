@@ -2996,15 +2996,16 @@ body,
 }
 
 .map-governance {
-  padding: 10px 14px 0;
+  padding: 0;
   background: linear-gradient(120deg, #14384f, #1f4667);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .map-governance-inner {
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(5, 14, 28, 0.34);
-  padding: 8px 10px;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  padding: 10px 14px;
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -4154,7 +4155,7 @@ body[data-theme-mode='dark'] .compare-item select {
   }
 
   .map-governance {
-    padding: 8px 10px 0;
+    padding: 0;
   }
 
   .topbar {
@@ -4722,12 +4723,17 @@ body[data-theme-mode='dark'] .compare-item select {
   border-color: var(--earth-border);
   box-shadow: 0 16px 30px rgba(41, 23, 13, 0.1);
   --map-theme-surface: #f3e7d9;
-  --map-theme-surface-soft: #fbf3e8;
+  --map-theme-surface-soft: #ffffff;
   --map-theme-border-soft: #ddc5ad;
   --map-theme-text: #3d2b20;
 }
 
-.map-governance,
+.map-governance {
+  background: var(--map-theme-surface-soft);
+  color: var(--map-theme-text);
+  border-bottom: 1px solid var(--map-theme-border-soft);
+}
+
 .map-header,
 .topbar {
   background: var(--map-theme-surface);
@@ -4748,8 +4754,10 @@ body[data-theme-mode='dark'] .compare-item select {
 }
 
 .map-governance-inner {
-  border: 1px solid var(--map-theme-border-soft);
-  background: var(--map-theme-surface-soft);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 14px;
 }
 
 .map-governance-links a {
@@ -4919,12 +4927,17 @@ body[data-theme-mode='dark'] .map-shell-inner {
   background: linear-gradient(180deg, #28170f 0%, #2f1d14 100%);
   border-color: #5a3a28;
   --map-theme-surface: #2f1d14;
-  --map-theme-surface-soft: #2a1911;
+  --map-theme-surface-soft: #3a2518;
   --map-theme-border-soft: #6f4a32;
   --map-theme-text: #f6e8da;
 }
 
-body[data-theme-mode='dark'] .map-governance,
+body[data-theme-mode='dark'] .map-governance {
+  background: var(--map-theme-surface-soft);
+  color: var(--map-theme-text);
+  border-bottom: 1px solid var(--map-theme-border-soft);
+}
+
 body[data-theme-mode='dark'] .map-header,
 body[data-theme-mode='dark'] .topbar {
   background: var(--map-theme-surface);
@@ -4932,8 +4945,9 @@ body[data-theme-mode='dark'] .topbar {
 }
 
 body[data-theme-mode='dark'] .map-governance-inner {
-  border-color: var(--map-theme-border-soft);
-  background: var(--map-theme-surface-soft);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 body[data-theme-mode='dark'] .map-header p,

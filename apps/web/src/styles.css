@@ -3107,10 +3107,12 @@ body,
 
 .map-more-actions-menu {
   position: absolute;
-  right: 0;
+  left: 0;
+  right: auto;
   top: calc(100% + 8px);
   z-index: 24;
   min-width: 290px;
+  max-width: min(360px, calc(100vw - 32px));
   border-radius: 10px;
   border: 1px solid #d4e1f0;
   background: #ffffff;
@@ -3135,6 +3137,7 @@ body,
   text-align: left;
   font-size: 0.82rem;
   cursor: pointer;
+  width: 100%;
 }
 
 .map-more-actions-menu button:hover,
@@ -3161,6 +3164,14 @@ body,
   background: #f7fbff;
   color: #12314f;
   padding: 0 9px;
+  width: 100%;
+}
+
+@media (min-width: 1280px) {
+  .map-more-actions-menu {
+    left: auto;
+    right: 0;
+  }
 }
 
 .map-share-notice {

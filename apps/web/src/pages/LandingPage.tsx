@@ -341,7 +341,7 @@ export const LandingPage = () => {
     const generalTheme = filteredNews.filter((item) => item.theme === 'geral');
     if (generalTheme.length) return generalTheme;
 
-    return filteredNews;
+    return [];
   }, [filteredNews, activeTheme]);
 
   const orderedThemeNews = useMemo(

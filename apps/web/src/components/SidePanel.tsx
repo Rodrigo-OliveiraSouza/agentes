@@ -104,7 +104,7 @@ export const SidePanel = ({
         <p className="panel-subtitle">Resumo rápido da área selecionada.</p>
       </div>
 
-      <section className="panel-card panel-card-highlight">
+      <section className="panel-card panel-card-highlight panel-indicator-overview">
         <p className="panel-label">Indicador do mapa</p>
         <p className="panel-main-text">{indicatorLabel}</p>
         <div className="panel-meta-grid">

@@ -62,6 +62,9 @@ export type HomeContent = {
 };
 
 const STORAGE_EVENT = 'luiza-barros-home-content-updated';
+const MAX_HOME_CAROUSEL_ITEMS = 24;
+const MAX_HOME_NEWS_ITEMS = 120;
+const MAX_HOME_MEDIA_ITEMS = 120;
 
 const normalizeNewsPriority = (value: unknown): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -276,7 +279,7 @@ const sanitizeContent = (value: unknown): HomeContent => {
               link: mediaType === 'youtube' ? (youtubeUrl || item.link?.trim() || '/mapas') : item.link?.trim() || '/mapas',
             };
           })
-          .slice(0, 12)
+          .slice(0, MAX_HOME_CAROUSEL_ITEMS)
       : cloneContent(defaultHomeContent).carousel,
     news: Array.isArray(payload.news) && payload.news.length
       ? payload.news
@@ -294,7 +297,7 @@ const sanitizeContent = (value: unknown): HomeContent => {
               priority: normalizeNewsPriority(item.priority),
             };
           })
-          .slice(0, 30)
+          .slice(0, MAX_HOME_NEWS_ITEMS)
       : cloneContent(defaultHomeContent).news,
     mediaItems: Array.isArray(payload.mediaItems) && payload.mediaItems.length
       ? payload.mediaItems
@@ -326,7 +329,7 @@ const sanitizeContent = (value: unknown): HomeContent => {
               link: type === 'video' ? (youtubeUrl || rawLink) : item.link?.trim() || fallback.link || '',
             };
           })
-          .slice(0, 30)
+          .slice(0, MAX_HOME_MEDIA_ITEMS)
       : cloneContent(defaultHomeContent).mediaItems,
   };
 };

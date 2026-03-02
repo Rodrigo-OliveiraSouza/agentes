@@ -3072,6 +3072,97 @@ body,
   padding: 0 9px;
 }
 
+.filter-group-actions {
+  min-width: 220px;
+}
+
+.map-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-filter-apply,
+.map-more-actions-toggle {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(198, 217, 239, 0.74);
+  background: #f7fbff;
+  color: #0f2744;
+  padding: 0 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.map-filter-apply {
+  background: #1f5a94;
+  border-color: #1f5a94;
+  color: #f7fbff;
+}
+
+.map-more-actions {
+  position: relative;
+}
+
+.map-more-actions-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 24;
+  min-width: 290px;
+  border-radius: 10px;
+  border: 1px solid #d4e1f0;
+  background: #ffffff;
+  box-shadow: 0 16px 30px rgba(15, 39, 68, 0.18);
+  padding: 10px;
+  display: none;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.map-more-actions.is-open .map-more-actions-menu {
+  display: grid;
+}
+
+.map-more-actions-menu button {
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid #d4e1f0;
+  background: #f7fbff;
+  color: #12314f;
+  padding: 0 10px;
+  text-align: left;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.map-more-actions-menu button:hover,
+.map-more-actions-toggle:hover {
+  background: #eaf3ff;
+}
+
+.map-more-actions-select {
+  display: grid;
+  gap: 4px;
+}
+
+.map-more-actions-select span {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #4d6480;
+}
+
+.map-more-actions-select select {
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid #d4e1f0;
+  background: #f7fbff;
+  color: #12314f;
+  padding: 0 9px;
+}
+
 .map-share-notice {
   margin: 8px 0 0;
   font-size: 0.8rem;
@@ -3812,6 +3903,16 @@ body[data-theme-mode='dark'] .compare-item select {
     width: 100%;
   }
 
+  .filter-group-actions {
+    grid-column: span 2;
+    min-width: 0;
+  }
+
+  .map-filter-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .map-header {
     padding-bottom: 12px;
   }
@@ -4052,6 +4153,22 @@ body[data-theme-mode='dark'] .compare-item select {
 
   .map-actions-row button {
     width: 100%;
+  }
+
+  .map-filter-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .map-filter-apply,
+  .map-more-actions,
+  .map-more-actions-toggle {
+    width: 100%;
+  }
+
+  .map-more-actions-menu {
+    position: static;
+    min-width: 0;
   }
 
   .map-actions-select {
@@ -4640,6 +4757,36 @@ body[data-theme-mode='dark'] .compare-item select {
   background: rgba(106, 61, 39, 0.75);
 }
 
+.map-filter-apply,
+.map-more-actions-toggle {
+  border-color: #d2b89d;
+  background: #fbf3e8;
+  color: #3b291e;
+}
+
+.map-filter-apply {
+  background: #7a3b1f;
+  border-color: rgba(241, 216, 190, 0.45);
+  color: #f8ecde;
+}
+
+.map-more-actions-menu {
+  background: #fbf3e8;
+  border-color: #ddc5ad;
+  box-shadow: 0 16px 30px rgba(47, 27, 15, 0.18);
+}
+
+.map-more-actions-menu button,
+.map-more-actions-select select {
+  border-color: #d2b89d;
+  background: #fff8ef;
+  color: #3b291e;
+}
+
+.map-more-actions-select span {
+  color: #6b5648;
+}
+
 .map-actions-select select,
 .filter-group select,
 .filter-group input {
@@ -4765,6 +4912,34 @@ body[data-theme-mode='dark'] .topbar,
 body[data-theme-mode='dark'] .map-governance,
 body[data-theme-mode='dark'] .map-page-nav {
   background: linear-gradient(120deg, #311b11, #462717);
+}
+
+body[data-theme-mode='dark'] .map-filter-apply,
+body[data-theme-mode='dark'] .map-more-actions-toggle {
+  background: #362216;
+  color: #f6e8da;
+  border-color: #78553c;
+}
+
+body[data-theme-mode='dark'] .map-filter-apply {
+  background: #5a2f1c;
+  border-color: #8a6045;
+}
+
+body[data-theme-mode='dark'] .map-more-actions-menu {
+  background: #2f1d14;
+  border-color: #6f4a32;
+}
+
+body[data-theme-mode='dark'] .map-more-actions-menu button,
+body[data-theme-mode='dark'] .map-more-actions-select select {
+  background: #362216;
+  color: #f6e8da;
+  border-color: #78553c;
+}
+
+body[data-theme-mode='dark'] .map-more-actions-select span {
+  color: #e8d5c1;
 }
 
 body[data-theme-mode='dark'] .content,

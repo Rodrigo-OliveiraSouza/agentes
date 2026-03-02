@@ -325,6 +325,7 @@ export const MapPage = () => {
   } = useFilterStore();
 
   const mapShellRef = useRef<HTMLElement | null>(null);
+  const moreActionsRef = useRef<HTMLDivElement | null>(null);
   const [indicators, setIndicators] = useState<IndicatorDefinition[]>([]);
   const [regions, setRegions] = useState<Territory[]>([]);
   const [allUfs, setAllUfs] = useState<Territory[]>([]);
@@ -339,6 +340,7 @@ export const MapPage = () => {
   const [legendScaleMode, setLegendScaleMode] = useState<LegendScaleMode>('linear');
   const [mapColorPalette, setMapColorPalette] = useState<MapColorPalette>('terra');
   const [shareNotice, setShareNotice] = useState<string>('');
+  const [isMoreActionsOpen, setIsMoreActionsOpen] = useState(false);
 
   const selectedIndicator = useMemo(
     () => indicators.find((item) => item.slug === indicator),
@@ -687,9 +689,37 @@ export const MapPage = () => {
     window.history.replaceState(null, '', nextUrl);
   }, [indicator, level, year, regionCode, ufCode, municipalityCode, search, viewMode, themeMode, legendScaleMode, mapColorPalette]);
 
+  useEffect(() => {
+    if (!isMoreActionsOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!moreActionsRef.current) return;
+      if (moreActionsRef.current.contains(event.target as Node)) return;
+      setIsMoreActionsOpen(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMoreActionsOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isMoreActionsOpen]);
+
   const notifyShare = (message: string) => {
     setShareNotice(message);
     window.setTimeout(() => setShareNotice(''), 2400);
+  };
+
+  const handleApplyFilters = () => {
+    notifyShare('Filtros aplicados.');
+    setIsMoreActionsOpen(false);
   };
 
   const handleShareFilters = async () => {
@@ -830,37 +860,6 @@ export const MapPage = () => {
                 <a href="#governanca-lgpd">LGPD</a>
               </div>
             </div>
-            <div className="map-actions-row">
-              <button type="button" onClick={toggleTheme}>
-                {themeMode === 'institutional' ? 'Tema escuro' : 'Tema claro institucional'}
-              </button>
-              <button type="button" onClick={handleShareFilters}>Compartilhar filtros</button>
-              <button type="button" onClick={handleExportCsv}>Exportar CSV</button>
-              <button type="button" onClick={handlePrintPdf}>Exportar PDF</button>
-              <button type="button" onClick={handleExportGeoJson}>Baixar mapa (GeoJSON)</button>
-              <button type="button" onClick={handleExportReport}>Baixar relatório</button>
-              <button type="button" onClick={togglePresentationMode}>Modo apresentação</button>
-              <label className="map-actions-select">
-                Paleta
-                <select value={mapColorPalette} onChange={(event) => setMapColorPalette(event.target.value as MapColorPalette)}>
-                  {Object.entries(mapPaletteLabel).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="map-actions-select">
-                Escala
-                <select value={legendScaleMode} onChange={(event) => setLegendScaleMode(event.target.value as LegendScaleMode)}>
-                  {Object.entries(legendScaleLabel).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
             {shareNotice ? <p className="map-share-notice">{shareNotice}</p> : null}
           </div>
 
@@ -874,129 +873,192 @@ export const MapPage = () => {
           </header>
 
           <header className="topbar">
-          <div className="filter-group">
-            <label>Indicador</label>
-            <select
-              value={indicator}
-              onChange={(event) => {
-                const nextSlug = event.target.value;
-                const nextIndicator = indicators.find((item) => item.slug === nextSlug);
-                setFilter({
-                  indicator: nextSlug,
-                  municipalityCode: '',
-                  year: nextIndicator?.defaultYear ?? year,
-                });
-              }}
-            >
-              {indicators.map((item) => (
-                <option key={item.slug} value={item.slug}>
-                  {item.label}
-                  {item.sourceLabel ? ` - ${item.sourceLabel}` : ''}
-                  {!item.supported ? ' (em breve)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="filter-group">
+              <label>Indicador</label>
+              <select
+                value={indicator}
+                onChange={(event) => {
+                  const nextSlug = event.target.value;
+                  const nextIndicator = indicators.find((item) => item.slug === nextSlug);
+                  setFilter({
+                    indicator: nextSlug,
+                    municipalityCode: '',
+                    year: nextIndicator?.defaultYear ?? year,
+                  });
+                }}
+              >
+                {indicators.map((item) => (
+                  <option key={item.slug} value={item.slug}>
+                    {item.label}
+                    {item.sourceLabel ? ` - ${item.sourceLabel}` : ''}
+                    {!item.supported ? ' (em breve)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="filter-group">
-            <label>Nível</label>
-            <select
-              value={level}
-              onChange={(event) =>
-                setFilter({
-                  level: event.target.value as TerritoryLevel,
-                  municipalityCode: '',
-                  search: '',
-                })
-              }
-            >
-              <option value="REGIAO">Região</option>
-              <option value="UF">UF</option>
-              <option value="MUNICIPIO">Município</option>
-            </select>
-          </div>
+            <div className="filter-group">
+              <label>Nível</label>
+              <select
+                value={level}
+                onChange={(event) =>
+                  setFilter({
+                    level: event.target.value as TerritoryLevel,
+                    municipalityCode: '',
+                    search: '',
+                  })
+                }
+              >
+                <option value="REGIAO">Região</option>
+                <option value="UF">UF</option>
+                <option value="MUNICIPIO">Município</option>
+              </select>
+            </div>
 
-          <div className="filter-group">
-            <label>Região</label>
-            <select
-              value={regionCode}
-              onChange={(event) =>
-                setFilter({
-                  regionCode: event.target.value,
-                  ufCode: '',
-                  municipalityCode: '',
-                })
-              }
-            >
-              <option value="">Brasil</option>
-              {regions.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="filter-group">
+              <label>Região</label>
+              <select
+                value={regionCode}
+                onChange={(event) =>
+                  setFilter({
+                    regionCode: event.target.value,
+                    ufCode: '',
+                    municipalityCode: '',
+                  })
+                }
+              >
+                <option value="">Brasil</option>
+                {regions.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="filter-group">
-            <label>UF</label>
-            <select value={ufCode} onChange={(event) => setFilter({ ufCode: event.target.value, municipalityCode: '' })}>
-              <option value="">Todas</option>
-              {ufs.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.uf ? `${item.uf} - ${item.name}` : item.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="filter-group">
+              <label>UF</label>
+              <select value={ufCode} onChange={(event) => setFilter({ ufCode: event.target.value, municipalityCode: '' })}>
+                <option value="">Todas</option>
+                {ufs.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.uf ? `${item.uf} - ${item.name}` : item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="filter-group">
-            <label>Município</label>
-            <select
-              value={municipalityCode}
-              onChange={(event) => setFilter({ municipalityCode: event.target.value })}
-              disabled={!ufCode}
-            >
-              <option value="">Todos</option>
-              {municipalities.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="filter-group">
+              <label>Município</label>
+              <select
+                value={municipalityCode}
+                onChange={(event) => setFilter({ municipalityCode: event.target.value })}
+                disabled={!ufCode}
+              >
+                <option value="">Todos</option>
+                {municipalities.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="filter-group narrow">
-            <label>Ano</label>
-            <input
-              type="number"
-              min={yearMin}
-              max={yearMax}
-              value={year}
-              disabled={yearLocked}
-              onChange={(event) => setFilter({ year: Number(event.target.value) })}
-            />
-          </div>
+            <div className="filter-group narrow">
+              <label>Ano</label>
+              <input
+                type="number"
+                min={yearMin}
+                max={yearMax}
+                value={year}
+                disabled={yearLocked}
+                onChange={(event) => setFilter({ year: Number(event.target.value) })}
+              />
+            </div>
 
-          <div className="filter-group wide">
-            <label>Busca</label>
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setFilter({ search: event.target.value })}
-              placeholder="Cidade/UF"
-            />
-          </div>
+            <div className="filter-group wide">
+              <label>Busca</label>
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => setFilter({ search: event.target.value })}
+                placeholder="Cidade/UF"
+              />
+            </div>
 
-          <div className="filter-group">
-            <label>Visualização</label>
-            <select value={viewMode} onChange={(event) => setFilter({ viewMode: event.target.value as ViewMode })}>
-              {modeOptions.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="filter-group">
+              <label>Visualização</label>
+              <select value={viewMode} onChange={(event) => setFilter({ viewMode: event.target.value as ViewMode })}>
+                {modeOptions.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {mode}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group filter-group-actions">
+              <label>Ações</label>
+              <div className="map-filter-actions">
+                <button type="button" className="map-filter-apply" onClick={handleApplyFilters}>
+                  Filtrar
+                </button>
+                <div className={`map-more-actions${isMoreActionsOpen ? ' is-open' : ''}`} ref={moreActionsRef}>
+                  <button
+                    type="button"
+                    className="map-more-actions-toggle"
+                    onClick={() => setIsMoreActionsOpen((current) => !current)}
+                    aria-haspopup="menu"
+                    aria-expanded={isMoreActionsOpen}
+                  >
+                    Mais ações
+                  </button>
+                  <div className="map-more-actions-menu" role="menu" aria-label="Mais ações do mapa">
+                    <button type="button" onClick={() => { setIsMoreActionsOpen(false); toggleTheme(); }}>
+                      {themeMode === 'institutional' ? 'Tema escuro' : 'Tema claro institucional'}
+                    </button>
+                    <button type="button" onClick={() => { setIsMoreActionsOpen(false); void handleShareFilters(); }}>
+                      Compartilhar filtros
+                    </button>
+                    <button type="button" onClick={() => { setIsMoreActionsOpen(false); handleExportCsv(); }}>
+                      Exportar CSV
+                    </button>
+                    <button type="button" onClick={() => { setIsMoreActionsOpen(false); handlePrintPdf(); }}>
+                      Exportar PDF
+                    </button>
+                    <button type="button" onClick={() => { setIsMoreActionsOpen(false); handleExportGeoJson(); }}>
+                      Baixar mapa (GeoJSON)
+                    </button>
+                    <button type="button" onClick={() => { setIsMoreActionsOpen(false); handleExportReport(); }}>
+                      Baixar relatório
+                    </button>
+                    <button type="button" onClick={() => { setIsMoreActionsOpen(false); void togglePresentationMode(); }}>
+                      Modo apresentação
+                    </button>
+                    <label className="map-more-actions-select">
+                      <span>Paleta</span>
+                      <select value={mapColorPalette} onChange={(event) => setMapColorPalette(event.target.value as MapColorPalette)}>
+                        {Object.entries(mapPaletteLabel).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="map-more-actions-select">
+                      <span>Escala</span>
+                      <select value={legendScaleMode} onChange={(event) => setLegendScaleMode(event.target.value as LegendScaleMode)}>
+                        {Object.entries(legendScaleLabel).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </header>
 
           {errorMessage ? <div className="error-banner">{errorMessage}</div> : null}

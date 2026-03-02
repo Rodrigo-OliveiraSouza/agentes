@@ -855,16 +855,9 @@ export const MapPage = () => {
                 <a href="#governanca-lgpd">LGPD</a>
               </div>
             </div>
+            <h2 className="map-governance-title">Mapa e análise territorial</h2>
             {shareNotice ? <p className="map-share-notice">{shareNotice}</p> : null}
           </div>
-
-          <header className="map-header">
-            <h2>Mapa e análise territorial</h2>
-            <p>
-              Consulte indicadores oficiais por município, compare territórios e acompanhe recortes de desigualdade
-              com rastreabilidade de fonte.
-            </p>
-          </header>
 
           <header className="topbar">
             <div className="filter-group">

@@ -4729,12 +4729,16 @@ body[data-theme-mode='dark'] .compare-item select {
 }
 
 .map-governance {
-  background: var(--map-theme-surface-soft);
+  background: var(--map-theme-surface);
   color: var(--map-theme-text);
   border-bottom: 1px solid var(--map-theme-border-soft);
 }
 
-.map-header,
+.map-header {
+  background: var(--map-theme-surface-soft);
+  color: var(--map-theme-text);
+}
+
 .topbar {
   background: var(--map-theme-surface);
   color: var(--map-theme-text);
@@ -4933,12 +4937,16 @@ body[data-theme-mode='dark'] .map-shell-inner {
 }
 
 body[data-theme-mode='dark'] .map-governance {
-  background: var(--map-theme-surface-soft);
+  background: var(--map-theme-surface);
   color: var(--map-theme-text);
   border-bottom: 1px solid var(--map-theme-border-soft);
 }
 
-body[data-theme-mode='dark'] .map-header,
+body[data-theme-mode='dark'] .map-header {
+  background: var(--map-theme-surface-soft);
+  color: var(--map-theme-text);
+}
+
 body[data-theme-mode='dark'] .topbar {
   background: var(--map-theme-surface);
   color: var(--map-theme-text);

@@ -4723,7 +4723,7 @@ body[data-theme-mode='dark'] .compare-item select {
   border-color: var(--earth-border);
   box-shadow: 0 16px 30px rgba(41, 23, 13, 0.1);
   --map-theme-surface: #f3e7d9;
-  --map-theme-surface-soft: #ffffff;
+  --map-theme-surface-soft: #f7ece0;
   --map-theme-border-soft: #ddc5ad;
   --map-theme-text: #3d2b20;
 }
@@ -4785,7 +4785,7 @@ body[data-theme-mode='dark'] .compare-item select {
 .map-filter-apply,
 .map-more-actions-toggle {
   border-color: #d2b89d;
-  background: #fbf3e8;
+  background: var(--map-theme-surface-soft);
   color: #3b291e;
 }
 
@@ -4804,7 +4804,7 @@ body[data-theme-mode='dark'] .compare-item select {
 .map-more-actions-menu button,
 .map-more-actions-select select {
   border-color: #d2b89d;
-  background: #fff8ef;
+  background: var(--map-theme-surface-soft);
   color: #3b291e;
 }
 
@@ -4816,7 +4816,7 @@ body[data-theme-mode='dark'] .compare-item select {
 .filter-group select,
 .filter-group input {
   border-color: #d2b89d;
-  background: #fbf3e8;
+  background: var(--map-theme-surface-soft);
   color: #3b291e;
 }
 

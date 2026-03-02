@@ -820,10 +820,6 @@ export const MapPage = () => {
   return (
     <div className="app-shell">
       <section id="mapa" className="map-shell" ref={mapShellRef}>
-        <div className="map-page-nav">
-          <a href="/">Esinapir - página de divulgação</a>
-          <span>Painel técnico de mapas e indicadores</span>
-        </div>
         <div className="map-shell-inner">
           <div className="map-governance">
             <div className="map-governance-inner">

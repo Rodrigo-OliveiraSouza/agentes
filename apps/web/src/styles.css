@@ -4811,7 +4811,7 @@ body[data-theme-mode='dark'] .compare-item select {
   margin-top: 0;
   padding: 13px 16px 16px;
   border-top: 0;
-  border-bottom: 2px solid var(--map-theme-accent-line);
+  border-bottom: 0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
@@ -4861,7 +4861,7 @@ body[data-theme-mode='dark'] .compare-item select {
 }
 
 .topbar {
-  border-bottom-color: var(--map-theme-accent-line);
+  border-bottom-color: transparent;
 }
 
 .map-actions-row button {
@@ -5109,7 +5109,7 @@ body[data-theme-mode='dark'] .map-share-notice {
 }
 
 body[data-theme-mode='dark'] .topbar {
-  border-bottom-color: var(--map-theme-accent-line);
+  border-bottom-color: transparent;
 }
 
 body[data-theme-mode='dark'] .map-filter-apply,

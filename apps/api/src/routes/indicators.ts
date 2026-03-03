@@ -9,7 +9,7 @@ indicatorsRoute.get('/', async (c) => {
   return cachedJson(
     c,
     'indicators',
-    { schemaVersion: '2026-02-18-v8' },
+    { schemaVersion: '2026-03-03-v9' },
     async () => ({
       count: INDICATORS.length,
       items: INDICATORS,

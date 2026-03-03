@@ -109,7 +109,7 @@ export const SiteFooter = () => {
 
       <div className="footer-divider" />
 
-      <p className="footer-legal-text">Texto destinado a exibicao das informacoes relacionadas a licenca de uso.</p>
+      <p className="footer-legal-text">&copy; 2025 E-SINAPIR. Todos os direitos reservados.</p>
     </footer>
   );
 };

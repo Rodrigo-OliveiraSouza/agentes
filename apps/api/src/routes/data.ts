@@ -32,7 +32,7 @@ dataRoute.get('/', zValidator('query', querySchema), async (c) => {
     throw new ApiError(
       501,
       'INDICATOR_NOT_IMPLEMENTED',
-      'Indicador ainda nao implementado no MVP. Fonte alternativa continua plugavel.',
+      'Indicador ainda não implementado no MVP. Fonte alternativa continua plugável.',
       { indicator: indicatorSlug },
     );
   }

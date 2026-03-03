@@ -3793,6 +3793,21 @@ body[data-theme-mode='dark'] .compare-item select {
   padding: 28px min(5vw, 52px) 20px;
 }
 
+.portal-shell.portal-editorial .site-footer {
+  margin-top: 8px;
+  position: relative;
+}
+
+.portal-shell.portal-editorial .site-footer::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: var(--editorial-side-width);
+  right: var(--editorial-side-width);
+  height: 8px;
+  background: #ffffff;
+}
+
 .footer-inner {
   max-width: 1240px;
   margin: 0 auto;

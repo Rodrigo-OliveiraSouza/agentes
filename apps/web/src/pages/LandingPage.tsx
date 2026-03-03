@@ -387,12 +387,6 @@ export const LandingPage = () => {
   }, [content.mediaItems, activeTheme]);
 
   const featuredVideoId = featuredVideo ? extractYouTubeVideoId(featuredVideo.youtubeUrl || featuredVideo.link) : null;
-  const supportMaterials = useMemo(() => {
-    const materialItems = content.mediaItems.filter((item) => item.type !== 'video');
-    const themedItems = materialItems.filter((item) => item.theme === activeTheme || item.theme === 'geral');
-    return (themedItems.length ? themedItems : materialItems).slice(0, 8);
-  }, [content.mediaItems, activeTheme]);
-
   const currentSlide = content.carousel[activeSlide] ?? content.carousel[0];
   const currentSlideLink = currentSlide
     ? toValidLink(currentSlide.mediaType === 'youtube' ? currentSlide.youtubeUrl || currentSlide.link : currentSlide.link)
@@ -759,34 +753,6 @@ export const LandingPage = () => {
             <p className="portal-theme-map-index-description">
               <strong>Descrição do índice:</strong> {indicatorDescription}
             </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="portal-materials-section">
-        <div className="portal-materials-inner">
-          <h2>Fotos, folders e comunicados</h2>
-          <div className="portal-materials-grid">
-            {supportMaterials.map((item) => {
-              const href = toValidLink(item.link);
-              const external = isExternalLink(href);
-              const typeLabel = item.type === 'photo' ? 'Foto' : item.type === 'folder' ? 'Folder' : 'Texto';
-              return (
-                <article key={item.id} className={`portal-material-card portal-material-${item.type}`}>
-                  {item.type !== 'text' && item.imageUrl ? <img src={item.imageUrl} alt={item.title} /> : null}
-                  <div>
-                    <p className="portal-material-kicker">{typeLabel}</p>
-                    <h3>{item.title}</h3>
-                    <p>{item.description}</p>
-                    {item.link.trim() ? (
-                      <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined}>
-                        Abrir material
-                      </a>
-                    ) : null}
-                  </div>
-                </article>
-              );
-            })}
           </div>
         </div>
       </section>

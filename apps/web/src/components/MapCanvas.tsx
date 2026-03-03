@@ -15,9 +15,59 @@ type MapCanvasProps = {
   legendScaleMode: 'linear' | 'quartile' | 'percentile';
   themeMode: 'institutional' | 'dark';
   colorPalette?: MapColorPalette;
+  customBaseColor?: string;
 };
 
-export type MapColorPalette = 'terra' | 'verde' | 'azul' | 'roxo';
+type BasePaletteKey =
+  | 'terra'
+  | 'grafite'
+  | 'cinza'
+  | 'azul'
+  | 'cobalto'
+  | 'oceano'
+  | 'turquesa'
+  | 'verde'
+  | 'oliva'
+  | 'magenta'
+  | 'roxo'
+  | 'violeta';
+
+export type MapColorPalette = BasePaletteKey | 'custom';
+
+export const DEFAULT_CUSTOM_PALETTE_COLOR = '#3e79b5';
+
+const BASE_PALETTE_COLORS: Record<BasePaletteKey, string> = {
+  terra: '#b56a38',
+  grafite: '#4b5563',
+  cinza: '#7a808a',
+  azul: '#3e79b5',
+  cobalto: '#2f64d6',
+  oceano: '#2b9cd8',
+  turquesa: '#20b6c7',
+  verde: '#4f9f5e',
+  oliva: '#8aa63d',
+  magenta: '#c058b8',
+  roxo: '#7d4ea8',
+  violeta: '#9b6ad6',
+};
+
+export const MAP_PALETTE_OPTIONS: Array<{ value: MapColorPalette; label: string; color: string }> = [
+  { value: 'terra', label: 'Terracota', color: BASE_PALETTE_COLORS.terra },
+  { value: 'grafite', label: 'Grafite', color: BASE_PALETTE_COLORS.grafite },
+  { value: 'cinza', label: 'Cinza', color: BASE_PALETTE_COLORS.cinza },
+  { value: 'azul', label: 'Azul', color: BASE_PALETTE_COLORS.azul },
+  { value: 'cobalto', label: 'Cobalto', color: BASE_PALETTE_COLORS.cobalto },
+  { value: 'oceano', label: 'Oceano', color: BASE_PALETTE_COLORS.oceano },
+  { value: 'turquesa', label: 'Turquesa', color: BASE_PALETTE_COLORS.turquesa },
+  { value: 'verde', label: 'Verde', color: BASE_PALETTE_COLORS.verde },
+  { value: 'oliva', label: 'Oliva', color: BASE_PALETTE_COLORS.oliva },
+  { value: 'magenta', label: 'Magenta', color: BASE_PALETTE_COLORS.magenta },
+  { value: 'roxo', label: 'Roxo', color: BASE_PALETTE_COLORS.roxo },
+  { value: 'violeta', label: 'Violeta', color: BASE_PALETTE_COLORS.violeta },
+  { value: 'custom', label: 'Personalizada', color: DEFAULT_CUSTOM_PALETTE_COLOR },
+];
+
+export const MAP_PALETTE_VALUES = MAP_PALETTE_OPTIONS.map((item) => item.value) as MapColorPalette[];
 
 type CentroidPoint = {
   code: string;
@@ -124,48 +174,37 @@ type PaletteConfig = {
   noData: string;
 };
 
-const MAP_PALETTES: Record<MapColorPalette, PaletteConfig> = {
-  terra: {
-    choroplethStops: ['#f4e4d1', '#e6c7a0', '#d9aa78', '#c68752', '#9a582e'],
-    heatmapStops: ['#f7ead9', '#ebd2b7', '#deb78f', '#cf9965', '#be7d46', '#a86532', '#844b24', '#5f3117'],
-    bubbleFill: '#b56a38',
-    bubbleStroke: '#8a4d28',
-    stroke: '#7b5e4a',
-    heatmapStroke: '#5f4332',
-    selectedStroke: '#cf6b3a',
-    noData: '#e7d9c9',
-  },
-  verde: {
-    choroplethStops: ['#edf6ea', '#cce6c2', '#9ed18f', '#6eb66a', '#3f8b45'],
-    heatmapStops: ['#edf6ea', '#d7eccf', '#c0e2b4', '#a7d696', '#8bc877', '#67b05a', '#4c9446', '#326f35'],
-    bubbleFill: '#58a65f',
-    bubbleStroke: '#2f7241',
-    stroke: '#4f7a58',
-    heatmapStroke: '#3f6948',
-    selectedStroke: '#2f9b9f',
-    noData: '#dfe8d8',
-  },
-  azul: {
-    choroplethStops: ['#e8f2fb', '#c8def4', '#9ec4e8', '#6ea7d8', '#3e79b5'],
-    heatmapStops: ['#edf5fe', '#d9eafb', '#bedbf7', '#9bc7f0', '#79b1e6', '#5e98d7', '#447dbd', '#2e629f'],
-    bubbleFill: '#4f95d8',
-    bubbleStroke: '#2f6798',
-    stroke: '#4f6c89',
-    heatmapStroke: '#3f5c78',
-    selectedStroke: '#c45e2b',
-    noData: '#dde6f0',
-  },
-  roxo: {
-    choroplethStops: ['#f3e9f9', '#dfc7ef', '#c59fdf', '#a576ca', '#7d4ea8'],
-    heatmapStops: ['#f6eefb', '#ead9f6', '#d9bdef', '#c59fe5', '#ae80d8', '#9662c7', '#7d4aa9', '#623483'],
-    bubbleFill: '#9a6ac8',
-    bubbleStroke: '#6f4693',
-    stroke: '#705c84',
-    heatmapStroke: '#5d4970',
-    selectedStroke: '#c4662f',
-    noData: '#e4d8ee',
-  },
+const buildPaletteFromBase = (baseHex: string): PaletteConfig => {
+  return {
+    choroplethStops: [
+      mixHexColor(baseHex, '#ffffff', 0.88),
+      mixHexColor(baseHex, '#ffffff', 0.68),
+      mixHexColor(baseHex, '#ffffff', 0.46),
+      mixHexColor(baseHex, '#111111', 0.12),
+      mixHexColor(baseHex, '#000000', 0.32),
+    ],
+    heatmapStops: [
+      mixHexColor(baseHex, '#ffffff', 0.92),
+      mixHexColor(baseHex, '#ffffff', 0.8),
+      mixHexColor(baseHex, '#ffffff', 0.66),
+      mixHexColor(baseHex, '#ffffff', 0.52),
+      mixHexColor(baseHex, '#111111', 0.08),
+      mixHexColor(baseHex, '#111111', 0.18),
+      mixHexColor(baseHex, '#111111', 0.28),
+      mixHexColor(baseHex, '#000000', 0.38),
+    ],
+    bubbleFill: mixHexColor(baseHex, '#ffffff', 0.12),
+    bubbleStroke: mixHexColor(baseHex, '#111111', 0.35),
+    stroke: mixHexColor(baseHex, '#1f2937', 0.28),
+    heatmapStroke: mixHexColor(baseHex, '#111111', 0.44),
+    selectedStroke: mixHexColor(baseHex, '#ffd166', 0.42),
+    noData: '#e5e7eb',
+  };
 };
+
+const MAP_PALETTES: Record<BasePaletteKey, PaletteConfig> = Object.fromEntries(
+  Object.entries(BASE_PALETTE_COLORS).map(([palette, color]) => [palette, buildPaletteFromBase(color)]),
+) as Record<BasePaletteKey, PaletteConfig>;
 
 const UF_BY_IBGE_CODE: Record<string, string> = {
   '11': 'RO',
@@ -246,6 +285,7 @@ export const MapCanvas = ({
   legendScaleMode,
   themeMode,
   colorPalette = 'terra',
+  customBaseColor = DEFAULT_CUSTOM_PALETTE_COLOR,
 }: MapCanvasProps) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
   const { isLoaded, loadError } = useJsApiLoader({
@@ -296,9 +336,16 @@ export const MapCanvas = ({
     [sortedValues],
   );
 
+  const resolvedCustomColor = useMemo(() => {
+    return /^#[0-9a-fA-F]{6}$/.test(customBaseColor) ? customBaseColor : DEFAULT_CUSTOM_PALETTE_COLOR;
+  }, [customBaseColor]);
+
   const paletteConfig = useMemo(() => {
+    if (colorPalette === 'custom') {
+      return buildPaletteFromBase(resolvedCustomColor);
+    }
     return MAP_PALETTES[colorPalette] ?? MAP_PALETTES.terra;
-  }, [colorPalette]);
+  }, [colorPalette, resolvedCustomColor]);
 
   const ratioByScale = useCallback(
     (value: number): number => {

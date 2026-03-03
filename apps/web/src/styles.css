@@ -3170,6 +3170,73 @@ body,
   width: 100%;
 }
 
+.map-palette-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.map-more-actions-menu .map-palette-swatch {
+  min-height: 24px;
+  height: 24px;
+  width: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(18, 49, 79, 0.22);
+  padding: 0;
+  cursor: pointer;
+  text-align: center;
+}
+
+.map-more-actions-menu .map-palette-swatch:hover {
+  transform: translateY(-1px);
+}
+
+.map-more-actions-menu .map-palette-swatch.is-active {
+  box-shadow: 0 0 0 2px rgba(18, 49, 79, 0.42);
+  border-color: rgba(18, 49, 79, 0.6);
+}
+
+.map-custom-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-custom-color-picker {
+  min-height: 34px;
+  height: 34px;
+  width: 48px;
+  border-radius: 8px;
+  border: 1px solid #d4e1f0;
+  background: #f7fbff;
+  cursor: pointer;
+  padding: 0;
+}
+
+.map-custom-color-row.is-active .map-custom-color-picker {
+  border-color: #6d8fb4;
+}
+
+.map-custom-color-code {
+  margin: 0;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d4e1f0;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #f7fbff;
+  color: #234264;
+  font-size: 0.78rem;
+  font-family: Consolas, 'Courier New', monospace;
+  letter-spacing: 0.03em;
+}
+
+.map-custom-color-row.is-active .map-custom-color-code {
+  background: #eaf3ff;
+  border-color: #6d8fb4;
+}
+
 @media (min-width: 1280px) {
   .map-more-actions-menu {
     left: auto;

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MapCanvas, type MapColorPalette } from '../components/MapCanvas';
+import {
+  DEFAULT_CUSTOM_PALETTE_COLOR,
+  MAP_PALETTE_OPTIONS,
+  MAP_PALETTE_VALUES,
+  MapCanvas,
+  type MapColorPalette,
+} from '../components/MapCanvas';
 import { SidePanel } from '../components/SidePanel';
 import { MetricsChartsPanel } from '../components/MetricsChartsPanel';
 import { SiteFooter } from '../components/SiteFooter';
@@ -30,18 +36,17 @@ const legendScaleLabel: Record<LegendScaleMode, string> = {
   percentile: 'Percentil',
 };
 
-const mapPaletteLabel: Record<MapColorPalette, string> = {
-  terra: 'Terracota',
-  verde: 'Verde',
-  azul: 'Azul',
-  roxo: 'Roxo',
-};
-
 const modeOptions: ViewMode[] = ['choropleth', 'bubbles', 'heatmap', 'clusters'];
 const territoryCollator = new Intl.Collator('pt-BR', { sensitivity: 'base' });
+const mapPaletteSet = new Set<MapColorPalette>(MAP_PALETTE_VALUES);
+const basePaletteOptions = MAP_PALETTE_OPTIONS.filter((item) => item.value !== 'custom');
 
 const isMapPalette = (value: string | null): value is MapColorPalette => {
-  return value === 'terra' || value === 'verde' || value === 'azul' || value === 'roxo';
+  return typeof value === 'string' && mapPaletteSet.has(value as MapColorPalette);
+};
+
+const isHexColor = (value: string | null): value is string => {
+  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value);
 };
 
 const sortTerritoriesByName = (items: Territory[]): Territory[] => {
@@ -339,6 +344,7 @@ export const MapPage = () => {
   const [themeMode, setThemeMode] = useState<ThemeMode>('institutional');
   const [legendScaleMode, setLegendScaleMode] = useState<LegendScaleMode>('linear');
   const [mapColorPalette, setMapColorPalette] = useState<MapColorPalette>('terra');
+  const [customPaletteColor, setCustomPaletteColor] = useState<string>(DEFAULT_CUSTOM_PALETTE_COLOR);
   const [shareNotice, setShareNotice] = useState<string>('');
   const [isMoreActionsOpen, setIsMoreActionsOpen] = useState(false);
 
@@ -411,6 +417,11 @@ export const MapPage = () => {
     const paletteParam = query.get('palette');
     if (isMapPalette(paletteParam)) {
       setMapColorPalette(paletteParam);
+    }
+
+    const paletteColorParam = query.get('paletteColor');
+    if (isHexColor(paletteColorParam)) {
+      setCustomPaletteColor(paletteColorParam);
     }
   }, [setFilter]);
 
@@ -685,9 +696,10 @@ export const MapPage = () => {
     params.set('theme', themeMode);
     params.set('legend', legendScaleMode);
     params.set('palette', mapColorPalette);
+    params.set('paletteColor', customPaletteColor);
     const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
     window.history.replaceState(null, '', nextUrl);
-  }, [indicator, level, year, regionCode, ufCode, municipalityCode, search, viewMode, themeMode, legendScaleMode, mapColorPalette]);
+  }, [indicator, level, year, regionCode, ufCode, municipalityCode, search, viewMode, themeMode, legendScaleMode, mapColorPalette, customPaletteColor]);
 
   useEffect(() => {
     if (!isMoreActionsOpen) return;
@@ -1022,12 +1034,41 @@ export const MapPage = () => {
                     <label className="map-more-actions-select">
                       <span>Paleta</span>
                       <select value={mapColorPalette} onChange={(event) => setMapColorPalette(event.target.value as MapColorPalette)}>
-                        {Object.entries(mapPaletteLabel).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
+                        {MAP_PALETTE_OPTIONS.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
                           </option>
                         ))}
                       </select>
+                    </label>
+                    <div className="map-palette-swatches" role="group" aria-label="Cores principais da paleta">
+                      {basePaletteOptions.map((item) => (
+                        <button
+                          key={item.value}
+                          type="button"
+                          className={`map-palette-swatch${mapColorPalette === item.value ? ' is-active' : ''}`}
+                          style={{ backgroundColor: item.color }}
+                          onClick={() => setMapColorPalette(item.value)}
+                          title={`Usar paleta ${item.label}`}
+                          aria-label={`Usar paleta ${item.label}`}
+                        />
+                      ))}
+                    </div>
+                    <label className="map-more-actions-select">
+                      <span>Cor personalizada</span>
+                      <div className={`map-custom-color-row${mapColorPalette === 'custom' ? ' is-active' : ''}`}>
+                        <input
+                          type="color"
+                          className="map-custom-color-picker"
+                          value={customPaletteColor}
+                          onChange={(event) => {
+                            setCustomPaletteColor(event.target.value);
+                            setMapColorPalette('custom');
+                          }}
+                          aria-label="Selecionar cor personalizada da paleta"
+                        />
+                        <code className="map-custom-color-code">{customPaletteColor.toUpperCase()}</code>
+                      </div>
                     </label>
                     <label className="map-more-actions-select">
                       <span>Escala</span>
@@ -1063,6 +1104,7 @@ export const MapPage = () => {
                 legendScaleMode={legendScaleMode}
                 themeMode={themeMode}
                 colorPalette={mapColorPalette}
+                customBaseColor={customPaletteColor}
               />
             </section>
 

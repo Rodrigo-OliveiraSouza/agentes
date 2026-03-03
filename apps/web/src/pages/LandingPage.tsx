@@ -66,12 +66,7 @@ const THEME_MAPS: Array<{
 ];
 
 const BrandMark = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-    <circle cx="16" cy="16" r="14.5" stroke="#C9A46C" strokeWidth="2" />
-    <path d="M8 9L14 6V16L8 19V9Z" fill="#C9A46C" />
-    <path d="M14 6L21 9V19L14 16V6Z" fill="#6E8B5B" />
-    <path d="M8 23L14 26L21 19L14 16L8 23Z" fill="#F3E6D6" />
-  </svg>
+  <img className={className} src="/logo.png" alt="" aria-hidden="true" />
 );
 
 const HERO_IMAGE_SLIDES = [

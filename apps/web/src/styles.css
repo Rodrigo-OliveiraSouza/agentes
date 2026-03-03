@@ -5688,6 +5688,9 @@ body[data-theme-mode='dark'] .compare-item select {
   width: 28px;
   height: 28px;
   flex: 0 0 auto;
+  display: block;
+  object-fit: cover;
+  border-radius: 999px;
 }
 
 .portal-header-v2 .portal-brand-title {

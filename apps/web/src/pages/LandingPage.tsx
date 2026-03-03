@@ -467,14 +467,14 @@ export const LandingPage = () => {
               <button
                 type="button"
                 className="portal-menu-toggle"
-                aria-label={isMobileMenuOpen ? 'Fechar menu principal' : 'Abrir menu principal'}
+                aria-label={isMobileMenuOpen ? 'Fechar navegacao por tema' : 'Abrir navegacao por tema'}
                 aria-expanded={isMobileMenuOpen}
                 onClick={() => setIsMobileMenuOpen((current) => !current)}
               >
                 <span className="portal-menu-toggle-icon" aria-hidden="true">
                   <span />
                 </span>
-                <span>Menu</span>
+                <span>Navegar por tema</span>
               </button>
             </div>
           </div>
@@ -503,13 +503,13 @@ export const LandingPage = () => {
       <button
         type="button"
         className={`portal-mobile-overlay${isMobileMenuOpen ? ' is-open' : ''}`}
-        aria-label="Fechar menu"
+        aria-label="Fechar navegacao por tema"
         onClick={() => setIsMobileMenuOpen(false)}
       />
-      <aside className={`portal-mobile-drawer${isMobileMenuOpen ? ' is-open' : ''}`} aria-label="Menu principal mobile">
+      <aside className={`portal-mobile-drawer${isMobileMenuOpen ? ' is-open' : ''}`} aria-label="Navegacao por tema mobile">
         <div className="portal-mobile-drawer-head">
           <strong>E-SINAPIR</strong>
-          <button type="button" className="portal-mobile-drawer-close" aria-label="Fechar menu" onClick={() => setIsMobileMenuOpen(false)}>
+          <button type="button" className="portal-mobile-drawer-close" aria-label="Fechar navegacao por tema" onClick={() => setIsMobileMenuOpen(false)}>
             x
           </button>
         </div>

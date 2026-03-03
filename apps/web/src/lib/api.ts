@@ -64,6 +64,68 @@ type CachedEntry<T> = {
   payload: T;
 };
 
+const PT_TEXT_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bPopulacao\b/g, 'População'],
+  [/\bprecos\b/g, 'preços'],
+  [/\bdemografica\b/g, 'demográfica'],
+  [/\balfabetizacao\b/g, 'alfabetização'],
+  [/\bArea\b/g, 'Área'],
+  [/\bdesocupacao\b/g, 'desocupação'],
+  [/\bIndice\b/g, 'Índice'],
+  [/\bfrequencia\b/g, 'frequência'],
+  [/\bpre-natal\b/g, 'pré-natal'],
+  [/\batencao primaria\b/g, 'atenção primária'],
+  [/\bagua encanada\b/g, 'água encanada'],
+  [/\bDomicilios\b/g, 'Domicílios'],
+  [/\bacesso a internet\b/g, 'acesso à internet'],
+  [/\bplugavel\b/g, 'plugável'],
+  [/\bHomicidios\b/g, 'Homicídios'],
+  [/\btransito\b/g, 'trânsito'],
+  [/\bobitos\b/g, 'óbitos'],
+  [/\bregiao\b/g, 'região'],
+  [/\bvariavel\b/g, 'variável'],
+  [/\bclassificacao\b/g, 'classificação'],
+  [/\bconexao\b/g, 'conexão'],
+  [/\bDemografico\b/g, 'Demográfico'],
+  [/\bMunicipios\b/g, 'Municípios'],
+  [/\bvitima\b/g, 'vítima'],
+  [/\bvitimizacao\b/g, 'vitimização'],
+  [/\bpopulacao\b/g, 'população'],
+  [/\bCalculo\b/g, 'Cálculo'],
+  [/\bnao\b/g, 'não'],
+];
+
+const normalizePtText = (value: string): string => {
+  let normalized = value;
+  for (const [pattern, replacement] of PT_TEXT_REPLACEMENTS) {
+    normalized = normalized.replace(pattern, replacement);
+  }
+  return normalized;
+};
+
+const normalizeIndicatorDefinition = (item: IndicatorDefinition): IndicatorDefinition => {
+  return {
+    ...item,
+    label: normalizePtText(item.label),
+    source: normalizePtText(item.source),
+    sourceLabel: item.sourceLabel ? normalizePtText(item.sourceLabel) : item.sourceLabel,
+    notes: item.notes ? normalizePtText(item.notes) : item.notes,
+  };
+};
+
+const normalizeCityProfile = (payload: CityProfileResponse): CityProfileResponse => {
+  return {
+    ...payload,
+    cityName: normalizePtText(payload.cityName),
+    metrics: payload.metrics.map((metric) => ({
+      ...metric,
+      label: normalizePtText(metric.label),
+      source: normalizePtText(metric.source),
+      notes: metric.notes ? normalizePtText(metric.notes) : metric.notes,
+    })),
+  };
+};
+
 const buildHttpErrorMessage = async (response: Response, url: string): Promise<string> => {
   const payload = await response.json().catch(() => null);
   const apiMessage =
@@ -181,7 +243,7 @@ export const api = {
     const payload = await request<{ items: IndicatorDefinition[] }>('/api/indicators', undefined, {
       cacheTtlSeconds: 86_400,
     });
-    return payload.items;
+    return payload.items.map(normalizeIndicatorDefinition);
   },
 
   territories: async (level: TerritoryLevel, parentCode?: string, search?: string): Promise<Territory[]> => {
@@ -213,7 +275,8 @@ export const api = {
   },
 
   cityProfile: async (cityCode: string): Promise<CityProfileResponse> => {
-    return request<CityProfileResponse>('/api/city-profile', { cityCode }, { cacheTtlSeconds: 86_400 });
+    const payload = await request<CityProfileResponse>('/api/city-profile', { cityCode }, { cacheTtlSeconds: 86_400 });
+    return normalizeCityProfile(payload);
   },
 
   homeContent: async (): Promise<HomeContentResponse> => {

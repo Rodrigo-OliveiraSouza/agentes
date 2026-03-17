@@ -771,11 +771,6 @@ export const MapPage = () => {
     window.print();
   };
 
-  const handleGoToNewsHome = () => {
-    window.history.pushState(null, '', '/');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  };
-
   const handleExportGeoJson = () => {
     if (!geojsonPayload) {
       notifyShare('Não há malha carregada para exportar.');
@@ -871,7 +866,12 @@ export const MapPage = () => {
         <div className="map-shell-inner">
           <div className="map-governance">
             <div className="map-governance-inner">
-              <p>gov.br | painel territorial de indicadores</p>
+              <div className="map-governance-brand">
+                <p>gov.br | painel territorial de indicadores</p>
+                <a href="/" className="map-governance-home-link">
+                  PÁGINA INICIAL
+                </a>
+              </div>
               <div className="map-governance-links">
                 <a href="#governanca-acessibilidade">Acessibilidade</a>
                 <a href="#governanca-politica-dados">Política de Dados</a>
@@ -1010,9 +1010,6 @@ export const MapPage = () => {
             <div className="filter-group filter-group-actions">
               <label>Ações</label>
               <div className="map-filter-actions">
-                <button type="button" className="map-filter-apply" onClick={handleGoToNewsHome}>
-                  Voltar para a página inicial
-                </button>
                 <div className={`map-more-actions${isMoreActionsOpen ? ' is-open' : ''}`} ref={moreActionsRef}>
                   <button
                     type="button"

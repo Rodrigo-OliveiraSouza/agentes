@@ -3020,6 +3020,27 @@ body,
   color: #dbeafe;
 }
 
+.map-governance-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.map-governance-home-link {
+  color: #dbeafe;
+  text-decoration: none;
+  font-size: 0.74rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.map-governance-home-link:hover,
+.map-governance-home-link:focus-visible {
+  text-decoration: underline;
+}
+
 .map-governance-links {
   display: flex;
   gap: 12px;
@@ -4993,6 +5014,7 @@ body[data-theme-mode='dark'] .compare-item select {
 
 .map-header p,
 .map-governance-inner p,
+.map-governance-home-link,
 .map-governance-links a,
 .filter-group label,
 .map-actions-select {
@@ -5242,6 +5264,7 @@ body[data-theme-mode='dark'] .map-governance-inner {
 
 body[data-theme-mode='dark'] .map-header p,
 body[data-theme-mode='dark'] .map-governance-inner p,
+body[data-theme-mode='dark'] .map-governance-home-link,
 body[data-theme-mode='dark'] .map-governance-links a,
 body[data-theme-mode='dark'] .filter-group label,
 body[data-theme-mode='dark'] .map-actions-select {

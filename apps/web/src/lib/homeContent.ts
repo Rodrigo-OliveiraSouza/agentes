@@ -129,7 +129,7 @@ export const defaultHomeContent: HomeContent = {
       youtubeUrl: '',
       title: 'Transparência pública',
       summary: 'Notícias, reações da comunidade e acesso simplificado a dados territoriais.',
-      link: 'https://plataformadiversifica.vercel.app/',
+      link: 'https://www.avadiversifica.com.br/',
     },
   ],
   news: [
@@ -162,7 +162,7 @@ export const defaultHomeContent: HomeContent = {
       summary: 'Integração de fontes públicas amplia rastreabilidade dos dados do observatório.',
       date: '2026-02-16',
       imageUrl: slideThree,
-      link: 'https://plataformadiversifica.vercel.app/',
+      link: 'https://www.avadiversifica.com.br/',
       reaction: 'Gestão: ganho de confiabilidade nas publicações.',
       priority: 1,
     },
@@ -216,7 +216,7 @@ export const defaultHomeContent: HomeContent = {
       description: 'Acesso a folder digital, peças e documentos de campanha.',
       imageUrl: slideThree,
       youtubeUrl: '',
-      link: 'https://plataformadiversifica.vercel.app/',
+      link: 'https://www.avadiversifica.com.br/',
     },
     {
       id: 'material-04',

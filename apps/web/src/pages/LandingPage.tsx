@@ -76,6 +76,9 @@ const HERO_IMAGE_SLIDES = [
   { src: '/imagens/Samba_caracterisco.png', alt: 'Manifestacao cultural de samba' },
 ] as const;
 
+const HEADER_COLLAPSE_SCROLL_OFFSET = 72;
+const HEADER_EXPAND_SCROLL_OFFSET = 24;
+
 const toValidLink = (href: string): string => {
   if (!href.trim()) return '/mapas';
   return href;
@@ -160,7 +163,15 @@ export const LandingPage = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsHeaderScrolled(window.scrollY > 8);
+      const scrollY = window.scrollY;
+      // Hysteresis prevents the sticky header from flickering near the collapse point.
+      setIsHeaderScrolled((current) => {
+        if (current) {
+          return scrollY > HEADER_EXPAND_SCROLL_OFFSET;
+        }
+
+        return scrollY > HEADER_COLLAPSE_SCROLL_OFFSET;
+      });
     };
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -411,7 +422,7 @@ export const LandingPage = () => {
                   ATPIR
                 </a>
                 <a
-                  href="https://plataformadiversifica.vercel.app/"
+                  href="https://www.avadiversifica.com.br/"
                   aria-label="DIVERSIFICA"
                   className="portal-btn portal-btn-secondary"
                   target="_blank"

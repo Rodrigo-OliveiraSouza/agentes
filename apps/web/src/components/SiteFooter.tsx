@@ -41,7 +41,7 @@ const transparencyLinks: FooterLink[] = [
 const socialLinks: FooterLink[] = [
   { label: 'Gov.br', href: 'https://www.instagram.com/govbr/', external: true },
   { label: 'MIR', href: 'https://www.instagram.com/ministerioigualdaderacial/', external: true },
-  { label: 'Diversifica', href: 'https://plataformadiversifica.vercel.app/', external: true },
+  { label: 'Diversifica', href: 'https://www.avadiversifica.com.br/', external: true },
 ];
 
 const renderColumnLinks = (links: FooterLink[]) =>

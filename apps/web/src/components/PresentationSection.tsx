@@ -150,7 +150,7 @@ export const PresentationSection = () => {
             </a>
             <a
               className="presentation-link presentation-link-subtle"
-              href="https://plataformadiversifica.vercel.app/"
+              href="https://www.avadiversifica.com.br/"
               target="_blank"
               rel="noreferrer"
             >

@@ -36,7 +36,13 @@ const legendScaleLabel: Record<LegendScaleMode, string> = {
   percentile: 'Percentil',
 };
 
-const modeOptions: ViewMode[] = ['choropleth', 'bubbles', 'heatmap', 'clusters'];
+const modeOptions: ViewMode[] = ['choropleth', 'heatmap', 'clusters', 'bubbles'];
+const modeLabel: Record<ViewMode, string> = {
+  choropleth: 'Preenchimento por Área (Choropleth)',
+  heatmap: 'Mapa de Calor (Heatmap)',
+  clusters: 'Marcadores (Clusters)',
+  bubbles: 'Bolhas (Bubbles)',
+};
 const territoryCollator = new Intl.Collator('pt-BR', { sensitivity: 'base' });
 const mapPaletteSet = new Set<MapColorPalette>(MAP_PALETTE_VALUES);
 const basePaletteOptions = MAP_PALETTE_OPTIONS.filter((item) => item.value !== 'custom');
@@ -765,6 +771,11 @@ export const MapPage = () => {
     window.print();
   };
 
+  const handleGoToNewsHome = () => {
+    window.history.pushState(null, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
   const handleExportGeoJson = () => {
     if (!geojsonPayload) {
       notifyShare('Não há malha carregada para exportar.');
@@ -990,7 +1001,7 @@ export const MapPage = () => {
               <select value={viewMode} onChange={(event) => setFilter({ viewMode: event.target.value as ViewMode })}>
                 {modeOptions.map((mode) => (
                   <option key={mode} value={mode}>
-                    {mode}
+                    {modeLabel[mode]}
                   </option>
                 ))}
               </select>
@@ -999,6 +1010,9 @@ export const MapPage = () => {
             <div className="filter-group filter-group-actions">
               <label>Ações</label>
               <div className="map-filter-actions">
+                <button type="button" className="map-filter-apply" onClick={handleGoToNewsHome}>
+                  Voltar para a página inicial
+                </button>
                 <div className={`map-more-actions${isMoreActionsOpen ? ' is-open' : ''}`} ref={moreActionsRef}>
                   <button
                     type="button"

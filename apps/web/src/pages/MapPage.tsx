@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DEFAULT_CUSTOM_PALETTE_COLOR,
   MAP_PALETTE_OPTIONS,
@@ -10,6 +10,13 @@ import { SidePanel } from '../components/SidePanel';
 import { MetricsChartsPanel } from '../components/MetricsChartsPanel';
 import { SiteFooter } from '../components/SiteFooter';
 import { api } from '../lib/api';
+import {
+  buildAppHref,
+  buildSectionHref,
+  readCurrentSearchParams,
+  replaceCurrentRoute,
+  scrollToSection,
+} from '../lib/runtime';
 import type {
   DataResponse,
   GeoJsonResponse,
@@ -196,6 +203,11 @@ const buildRequestCode = (level: TerritoryLevel, ufCode: string, municipalityCod
   return undefined;
 };
 
+const handleSectionClick = (sectionId: string) => (event: ReactMouseEvent<HTMLAnchorElement>) => {
+  event.preventDefault();
+  scrollToSection(sectionId);
+};
+
 const filterByTerritorySelection = (
   rows: IndicatorPoint[],
   level: TerritoryLevel,
@@ -371,7 +383,7 @@ export const MapPage = () => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const query = new URLSearchParams(window.location.search);
+    const query = readCurrentSearchParams();
     const partial: Partial<{
       indicator: string;
       level: TerritoryLevel;
@@ -703,8 +715,7 @@ export const MapPage = () => {
     params.set('legend', legendScaleMode);
     params.set('palette', mapColorPalette);
     params.set('paletteColor', customPaletteColor);
-    const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
-    window.history.replaceState(null, '', nextUrl);
+    replaceCurrentRoute('/mapas', params);
   }, [indicator, level, year, regionCode, ufCode, municipalityCode, search, viewMode, themeMode, legendScaleMode, mapColorPalette, customPaletteColor]);
 
   useEffect(() => {
@@ -868,14 +879,14 @@ export const MapPage = () => {
             <div className="map-governance-inner">
               <div className="map-governance-brand">
                 <p>gov.br | painel territorial de indicadores</p>
-                <a href="/" className="map-governance-home-link">
+                <a href={buildAppHref('/')} className="map-governance-home-link">
                   PÁGINA INICIAL
                 </a>
               </div>
               <div className="map-governance-links">
-                <a href="#governanca-acessibilidade">Acessibilidade</a>
-                <a href="#governanca-politica-dados">Política de Dados</a>
-                <a href="#governanca-lgpd">LGPD</a>
+                <a href={buildSectionHref('governanca-acessibilidade', '/mapas')} onClick={handleSectionClick('governanca-acessibilidade')}>Acessibilidade</a>
+                <a href={buildSectionHref('governanca-politica-dados', '/mapas')} onClick={handleSectionClick('governanca-politica-dados')}>Política de Dados</a>
+                <a href={buildSectionHref('governanca-lgpd', '/mapas')} onClick={handleSectionClick('governanca-lgpd')}>LGPD</a>
               </div>
             </div>
             <h2 className="map-governance-title">Mapa e análise territorial</h2>

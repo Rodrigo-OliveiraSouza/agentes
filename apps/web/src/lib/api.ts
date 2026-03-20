@@ -6,6 +6,7 @@ import type {
   Territory,
   TerritoryLevel,
 } from './types';
+import { isNativeApp } from './runtime';
 
 const DEFAULT_PUBLIC_API_BASE = import.meta.env.DEV ? '' : 'https://ibge-map-api.rodrigoliveira0001.workers.dev';
 const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').trim();
@@ -24,6 +25,7 @@ const isLoopbackUrl = (url: string): boolean => {
 
 const isLocalBrowser = (): boolean => {
   if (typeof window === 'undefined') return false;
+  if (isNativeApp) return false;
   return isLoopbackHost(window.location.hostname);
 };
 

@@ -1,3 +1,5 @@
+import { buildAppHref } from '../lib/runtime';
+
 type FooterLink = {
   label: string;
   href: string;
@@ -48,7 +50,7 @@ const renderColumnLinks = (links: FooterLink[]) =>
   links.map((item) => (
     <a
       key={item.label}
-      href={item.href}
+      href={item.external ? item.href : buildAppHref(item.href)}
       target={item.external ? '_blank' : undefined}
       rel={item.external ? 'noreferrer' : undefined}
     >

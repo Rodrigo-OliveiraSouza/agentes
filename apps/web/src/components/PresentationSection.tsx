@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type MouseEvent, useEffect, useMemo, useState } from 'react';
+import { buildAppHref, buildSectionHref, scrollToSection } from '../lib/runtime';
 
 type Slide = {
   src: string;
@@ -73,6 +74,11 @@ const workflowGroups = [
 
 const lastDataUpdate = '18/02/2026';
 
+const handleSectionClick = (sectionId: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+  event.preventDefault();
+  scrollToSection(sectionId);
+};
+
 export const PresentationSection = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const hasSlides = carouselSlides.length > 0;
@@ -99,6 +105,9 @@ export const PresentationSection = () => {
   }, [activeIndex, hasSlides]);
 
   const currentMeta = slideMeta[activeIndex % slideMeta.length];
+  const currentMetaSectionId = currentMeta.href.startsWith('#')
+    ? currentMeta.href.slice(1)
+    : null;
 
   return (
     <section className="presentation-section">
@@ -106,9 +115,15 @@ export const PresentationSection = () => {
         <div className="gov-strip-inner">
           <p>gov.br | Ministério da Igualdade Racial</p>
           <div className="gov-strip-links">
-            <a href="#governanca-acessibilidade">Acessibilidade</a>
-            <a href="#governanca-politica-dados">Política de Dados</a>
-            <a href="#governanca-lgpd">LGPD</a>
+            <a href={buildSectionHref('governanca-acessibilidade')} onClick={handleSectionClick('governanca-acessibilidade')}>
+              Acessibilidade
+            </a>
+            <a href={buildSectionHref('governanca-politica-dados')} onClick={handleSectionClick('governanca-politica-dados')}>
+              Política de Dados
+            </a>
+            <a href={buildSectionHref('governanca-lgpd')} onClick={handleSectionClick('governanca-lgpd')}>
+              LGPD
+            </a>
             <span>Última atualização: {lastDataUpdate}</span>
           </div>
         </div>
@@ -131,10 +146,18 @@ export const PresentationSection = () => {
           </p>
 
           <div className="presentation-actions">
-            <a className="presentation-button presentation-button-primary" href="#mapa">
+            <a
+              className="presentation-button presentation-button-primary"
+              href={buildSectionHref('mapa')}
+              onClick={handleSectionClick('mapa')}
+            >
               Acessar mapa interativo
             </a>
-            <a className="presentation-button presentation-button-secondary" href="#metodologia">
+            <a
+              className="presentation-button presentation-button-secondary"
+              href={buildSectionHref('metodologia')}
+              onClick={handleSectionClick('metodologia')}
+            >
               Ver metodologia
             </a>
           </div>
@@ -174,7 +197,19 @@ export const PresentationSection = () => {
         <div className="presentation-carousel">
           <div className="carousel-frame">
             {currentSlide && currentMeta ? (
-              <a className="carousel-slide-link" href={currentMeta.href}>
+              <a
+                className="carousel-slide-link"
+                href={
+                  currentMetaSectionId
+                    ? buildSectionHref(currentMetaSectionId)
+                    : buildAppHref(currentMeta.href)
+                }
+                onClick={
+                  currentMetaSectionId
+                    ? handleSectionClick(currentMetaSectionId)
+                    : undefined
+                }
+              >
                 <img src={currentSlide.src} alt={currentSlide.alt} />
                 <div className="carousel-overlay">
                   <p className="carousel-tag">Slide {activeIndex + 1}</p>

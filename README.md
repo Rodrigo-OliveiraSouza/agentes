@@ -173,6 +173,26 @@ Terminal 2 (Web):
 npm run dev:web
 ```
 
+## Aplicativo Android via WebView
+
+O frontend em `apps/web` também pode ser empacotado como aplicativo Android usando `Capacitor`.
+
+Fluxo em `apps/web`:
+
+```bash
+npm run android:add
+npm run android:build
+npm run android:open
+```
+
+Observações:
+
+- o projeto Android fica em `apps/web/android`
+- o WebView usa o mesmo build do site
+- links internos são adaptados para o runtime nativo sem alterar o comportamento do deploy web
+- `VITE_GOOGLE_MAPS_API_KEY` precisa existir no momento do `build`; sem isso o APK abre, mas o mapa não carrega
+- se a chave do Google Maps usar restrição por `HTTP referrer`, valide também a origem do WebView do Capacitor (`https://localhost`)
+
 ## Apresentacao e carrossel (Web)
 
 - A capa do site fica antes do mapa, em `apps/web/src/components/PresentationSection.tsx`.

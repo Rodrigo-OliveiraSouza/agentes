@@ -6,6 +6,9 @@ npm-debug.log*
 !.env.example
 apps/web/.env.local
 apps/api/.dev.vars
+apps/web/.gradle-user-home
+apps/web/.mobile-tools
+apps/web/*.tsbuildinfo
 
 apps/web/dist
 apps/api/.wrangler

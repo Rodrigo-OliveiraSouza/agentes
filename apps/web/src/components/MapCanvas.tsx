@@ -291,6 +291,7 @@ export const MapCanvas = ({
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
     id: 'ibge-map-loader',
+    authReferrerPolicy: 'origin',
   });
 
   const [currentZoom, setCurrentZoom] = useState<number>(initialZoom);
@@ -629,7 +630,11 @@ export const MapCanvas = ({
   }, [geojson]);
 
   if (!apiKey) {
-    return <div className="map-fallback">Defina `VITE_GOOGLE_MAPS_API_KEY` para carregar o mapa.</div>;
+    return (
+      <div className="map-fallback">
+        O app foi compilado sem `VITE_GOOGLE_MAPS_API_KEY`. Defina a chave do Google Maps e gere um novo build/APK.
+      </div>
+    );
   }
 
   if (loadError) {

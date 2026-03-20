@@ -10,6 +10,7 @@ import {
   type HomeContent,
   type HomeThemeKey,
 } from '../lib/homeContent';
+import { buildAppHref } from '../lib/runtime';
 import { extractYouTubeVideoId } from '../lib/youtube';
 import type { GeoJsonResponse, IndicatorDefinition, IndicatorPoint } from '../lib/types';
 
@@ -80,8 +81,8 @@ const HEADER_COLLAPSE_SCROLL_OFFSET = 72;
 const HEADER_EXPAND_SCROLL_OFFSET = 24;
 
 const toValidLink = (href: string): string => {
-  if (!href.trim()) return '/mapas';
-  return href;
+  if (!href.trim()) return buildAppHref('/mapas');
+  return buildAppHref(href);
 };
 
 const isExternalLink = (href: string): boolean => /^https?:\/\//i.test(href.trim());
@@ -396,7 +397,7 @@ export const LandingPage = () => {
   const currentSlide = content.carousel[activeSlide] ?? content.carousel[0];
   const currentSlideLink = currentSlide
     ? toValidLink(currentSlide.mediaType === 'youtube' ? currentSlide.youtubeUrl || currentSlide.link : currentSlide.link)
-    : '/mapas';
+    : buildAppHref('/mapas');
   const currentSlideIsExternal = isExternalLink(currentSlideLink);
   const currentSlideVideoId = currentSlide ? extractYouTubeVideoId(currentSlide.youtubeUrl || currentSlide.link) : null;
   const headerClassName = `portal-header portal-header-v2${isHeaderScrolled ? ' is-scrolled' : ''}${isMobileMenuOpen ? ' menu-open' : ''}`;
@@ -409,7 +410,7 @@ export const LandingPage = () => {
           <div className="portal-header-top">
             <div className="portal-header-row-inner portal-header-top-inner">
               <div className="portal-header-actions">
-                <a href="/mapas" aria-label="MAPA" className="portal-btn portal-btn-primary" target="_blank" rel="noreferrer">
+                <a href={buildAppHref('/mapas')} aria-label="MAPA" className="portal-btn portal-btn-primary">
                   MAPA
                 </a>
                 <a
@@ -435,7 +436,7 @@ export const LandingPage = () => {
           </div>
           <div className="portal-header-main">
             <div className="portal-header-row-inner portal-header-main-inner">
-              <a href="#" className="portal-brand" aria-label="E-SINAPIR - inicio">
+              <a href={buildAppHref('/')} className="portal-brand" aria-label="E-SINAPIR - inicio">
                 <BrandMark className="portal-brand-mark" />
                 <span className="portal-brand-title">E-SINAPIR</span>
               </a>
@@ -709,7 +710,7 @@ export const LandingPage = () => {
               <h2>Mapa temático: {activeThemeDefinition.label}</h2>
               <p>{activeThemeDefinition.description}</p>
             </div>
-            <a href="/mapas" className="portal-map-link" target="_blank" rel="noreferrer">
+            <a href={buildAppHref('/mapas')} className="portal-map-link">
               Ir para mapa completo
             </a>
           </div>

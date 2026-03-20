@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   HOME_THEME_OPTIONS,
   compareHomeNewsItems,
@@ -14,6 +14,7 @@ import {
   type HomeNewsItem,
   type HomeThemeKey,
 } from '../lib/homeContent';
+import { buildAppHref, buildSectionHref, scrollToSection } from '../lib/runtime';
 import { buildYouTubeThumbnailUrl, buildYouTubeWatchUrl, extractYouTubeVideoId } from '../lib/youtube';
 
 const ADMIN_SESSION_KEY = 'luiza-barros-admin-session-v1';
@@ -133,6 +134,11 @@ const parseSavedHomeContent = (snapshot: string): HomeContent => {
   } catch {
     return defaultHomeContent;
   }
+};
+
+const handleSectionClick = (sectionId: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+  event.preventDefault();
+  scrollToSection(sectionId);
 };
 
 const readFileAsDataUrl = (file: File): Promise<string> => {
@@ -482,7 +488,7 @@ export const AdminPage = () => {
               Código padrão em uso. Defina `VITE_ADMIN_ACCESS_CODE` no ambiente para aumentar a segurança.
             </p>
           ) : null}
-          <a href="/">Voltar para página inicial</a>
+          <a href={buildAppHref('/')}>Voltar para página inicial</a>
         </section>
       </div>
     );
@@ -845,10 +851,10 @@ export const AdminPage = () => {
           <button type="button" onClick={lockAdmin}>
             Encerrar sessão
           </button>
-          <a href="/mapas" target="_blank" rel="noreferrer">
+          <a href={buildAppHref('/mapas')}>
             Ver mapas
           </a>
-          <a href="/">Voltar para página inicial</a>
+          <a href={buildAppHref('/')}>Voltar para página inicial</a>
         </div>
       </header>
 
@@ -872,11 +878,11 @@ export const AdminPage = () => {
       <section className="admin-card">
         <h2>Navegação do painel</h2>
         <div className="admin-section-nav">
-          <a href="#admin-dados">Dados gerais</a>
-          <a href="#admin-edicao-aba">Edição por aba</a>
-          <a href="#admin-carrossel">Carrossel</a>
-          <a href="#admin-midias">Vídeos e materiais</a>
-          <a href="#admin-noticias">Notícias</a>
+          <a href={buildSectionHref('admin-dados', '/dev/admin')} onClick={handleSectionClick('admin-dados')}>Dados gerais</a>
+          <a href={buildSectionHref('admin-edicao-aba', '/dev/admin')} onClick={handleSectionClick('admin-edicao-aba')}>Edição por aba</a>
+          <a href={buildSectionHref('admin-carrossel', '/dev/admin')} onClick={handleSectionClick('admin-carrossel')}>Carrossel</a>
+          <a href={buildSectionHref('admin-midias', '/dev/admin')} onClick={handleSectionClick('admin-midias')}>Vídeos e materiais</a>
+          <a href={buildSectionHref('admin-noticias', '/dev/admin')} onClick={handleSectionClick('admin-noticias')}>Notícias</a>
         </div>
       </section>
 

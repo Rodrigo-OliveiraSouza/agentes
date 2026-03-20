@@ -1,17 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AdminPage } from './pages/AdminPage';
+import { resolveCurrentPath } from './lib/runtime';
 import { LandingPage } from './pages/LandingPage';
 import { MapPage } from './pages/MapPage';
-
-const normalizePath = (rawPath: string): string => {
-  if (!rawPath || rawPath === '/') return '/';
-  return rawPath.endsWith('/') ? rawPath.slice(0, -1) : rawPath;
-};
-
-const resolveCurrentPath = (): string => {
-  if (typeof window === 'undefined') return '/';
-  return normalizePath(window.location.pathname);
-};
 
 const App = () => {
   const [path, setPath] = useState(resolveCurrentPath);
@@ -22,8 +13,10 @@ const App = () => {
     };
 
     window.addEventListener('popstate', onPopState);
+    window.addEventListener('hashchange', onPopState);
     return () => {
       window.removeEventListener('popstate', onPopState);
+      window.removeEventListener('hashchange', onPopState);
     };
   }, []);
 

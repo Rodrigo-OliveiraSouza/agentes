@@ -7,6 +7,8 @@ npm-debug.log*
 apps/web/.env.local
 apps/api/.dev.vars
 apps/web/.gradle-user-home
+apps/web/.gradle-user-home-codex
+apps/web/.grandle-user-home
 apps/web/.mobile-tools
 apps/web/*.tsbuildinfo
 

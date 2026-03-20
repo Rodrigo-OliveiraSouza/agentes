@@ -16,6 +16,7 @@
     "lint": "echo \"No lint configured for Web\""
   },
   "dependencies": {
+    "@capacitor/app": "^8.0.1",
     "@capacitor/core": "^8.2.0",
     "@googlemaps/markerclusterer": "^2.6.0",
     "@react-google-maps/api": "^2.20.7",
@@ -37,4 +38,3 @@
     "vite": "^6.1.0"
   }
 }
-

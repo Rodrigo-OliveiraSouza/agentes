@@ -1,6 +1,7 @@
+import { App as CapacitorApp } from '@capacitor/app';
 import { useEffect, useState } from 'react';
 import { AdminPage } from './pages/AdminPage';
-import { resolveCurrentPath } from './lib/runtime';
+import { buildRouteHref, isNativeApp, resolveCurrentPath } from './lib/runtime';
 import { LandingPage } from './pages/LandingPage';
 import { MapPage } from './pages/MapPage';
 
@@ -17,6 +18,30 @@ const App = () => {
     return () => {
       window.removeEventListener('popstate', onPopState);
       window.removeEventListener('hashchange', onPopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isNativeApp) return;
+
+    const listener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      const currentPath = resolveCurrentPath();
+
+      if (currentPath !== '/') {
+        if (canGoBack) {
+          window.history.back();
+          return;
+        }
+
+        window.location.hash = buildRouteHref('/');
+        return;
+      }
+
+      CapacitorApp.exitApp();
+    });
+
+    return () => {
+      void listener.then((handle) => handle.remove());
     };
   }, []);
 
